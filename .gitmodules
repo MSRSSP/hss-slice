@@ -1,0 +1,3 @@
+[submodule "thirdparty/opensbi"]
+	path = thirdparty/opensbi
+	url = git@github.com:MSRSSP/opensbi.git

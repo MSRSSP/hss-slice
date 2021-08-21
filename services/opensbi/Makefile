@@ -28,45 +28,9 @@
 
 SRCS-$(CONFIG_SERVICE_OPENSBI) += \
 	services/opensbi/opensbi_service.c \
-	thirdparty/opensbi/lib/utils/sys/clint.c \
-	thirdparty/opensbi/lib/utils/irqchip/plic.c \
-	thirdparty/opensbi/lib/utils/libfdt/fdt.c \
-	thirdparty/opensbi/lib/utils/libfdt/fdt_ro.c \
-	thirdparty/opensbi/lib/utils/libfdt/fdt_rw.c \
-	thirdparty/opensbi/lib/utils/libfdt/fdt_wip.c \
-	thirdparty/opensbi/lib/utils/libfdt/fdt_addresses.c \
-	thirdparty/opensbi/lib/utils/fdt/fdt_fixup.c \
-	thirdparty/opensbi/lib/utils/fdt/fdt_helper.c \
-	thirdparty/opensbi/lib/sbi/riscv_asm.c \
-	thirdparty/opensbi/lib/sbi/riscv_atomic.c \
-	thirdparty/opensbi/lib/sbi/riscv_locks.c \
-	thirdparty/opensbi/lib/sbi/sbi_bitmap.c \
-	thirdparty/opensbi/lib/sbi/sbi_bitops.c \
-	thirdparty/opensbi/lib/sbi/sbi_console.c \
-	thirdparty/opensbi/lib/sbi/sbi_domain.c \
-	thirdparty/opensbi/lib/sbi/sbi_ecall_base.c \
-	thirdparty/opensbi/lib/sbi/sbi_ecall.c \
-	thirdparty/opensbi/lib/sbi/sbi_ecall_hsm.c \
-	thirdparty/opensbi/lib/sbi/sbi_ecall_legacy.c \
-	thirdparty/opensbi/lib/sbi/sbi_ecall_replace.c \
-	thirdparty/opensbi/lib/sbi/sbi_ecall_vendor.c \
-	thirdparty/opensbi/lib/sbi/sbi_emulate_csr.c \
-	thirdparty/opensbi/lib/sbi/sbi_fifo.c \
-	thirdparty/opensbi/lib/sbi/sbi_hart.c \
-	thirdparty/opensbi/lib/sbi/sbi_hsm.c \
-	thirdparty/opensbi/lib/sbi/sbi_illegal_insn.c \
-	thirdparty/opensbi/lib/sbi/sbi_init.c \
-	thirdparty/opensbi/lib/sbi/sbi_ipi.c \
-	thirdparty/opensbi/lib/sbi/sbi_math.c \
-	thirdparty/opensbi/lib/sbi/sbi_misaligned_ldst.c \
-	thirdparty/opensbi/lib/sbi/sbi_platform.c \
-	thirdparty/opensbi/lib/sbi/sbi_scratch.c \
-	thirdparty/opensbi/lib/sbi/sbi_string.c \
-	thirdparty/opensbi/lib/sbi/sbi_system.c \
-	thirdparty/opensbi/lib/sbi/sbi_timer.c \
-	thirdparty/opensbi/lib/sbi/sbi_tlb.c \
-	thirdparty/opensbi/lib/sbi/sbi_trap.c \
-	thirdparty/opensbi/lib/sbi/sbi_unpriv.c \
+
+LIBS+=thirdparty/opensbi/build/lib/libsbi.a
+LIBS+=thirdparty/opensbi/build/lib/libsbiutils.a
 
 SRCS-$(CONFIG_SERVICE_OPENSBI_IHC) += \
 	services/opensbi/opensbi_ihc_ecall.c \

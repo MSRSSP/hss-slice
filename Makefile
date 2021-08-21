@@ -56,6 +56,7 @@ endif
 
 
 MCMODEL=-mcmodel=medany
+LIBS =
 
 include application/rules.mk
 include application/targets.mk
@@ -64,7 +65,6 @@ include baremetal/Makefile
 include services/Makefile
 include modules/Makefile
 
-LIBS =
 
 #$(info $$INCLUDES is [${INCLUDES}])
 

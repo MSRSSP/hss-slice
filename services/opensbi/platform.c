@@ -101,9 +101,9 @@ extern unsigned long STACK_SIZE_PER_HART;
 
 static void mpfs_modify_dt(void *fdt)
 {
-    fdt_cpu_fixup(fdt);
+    fdt_cpu_fixup(fdt, sbi_domain_thishart_ptr());
 
-    fdt_fixups(fdt);
+    fdt_fixups(fdt, sbi_domain_thishart_ptr());
 
     //fdt_reserved_memory_nomap_fixup(fdt); // not needed for PolarFire SoC
 }
@@ -166,8 +166,15 @@ static int mpfs_console_getc(void)
     return result;
 }
 
+static struct sbi_console_device mpfs_console = {
+	.name = "mpfs_uart",
+	.console_putc = mpfs_console_putc,
+	.console_getc = mpfs_console_getc
+};
+
 static int mpfs_console_init(void)
 {
+    sbi_console_set_device(&mpfs_console);
     console_initialized = true;
     return 0;
 }
@@ -251,13 +258,13 @@ static u64 mpfs_get_tlbr_flush_limit(void)
 {
     return MPFS_TLB_RANGE_FLUSH_LIMIT;
 }
-
+/*
 // don't allow OpenSBI to play with PMPs
 int sbi_hart_pmp_configure(struct sbi_scratch *pScratch)
 {
     (void)pScratch;
     return 0;
-}
+}*/
 
 static struct sbi_domain_memregion mpfs_memregion[3] = {
     { .order = 0, .base = 0u, .flags = 0u },
@@ -407,27 +414,25 @@ const struct sbi_platform_operations platform_ops = {
     .misa_check_extension = NULL,
     .misa_get_xlen = NULL,
 
-    .console_putc = mpfs_console_putc,
-    .console_getc = mpfs_console_getc,
     .console_init = mpfs_console_init,
 
     .irqchip_init = mpfs_irqchip_init,
     .irqchip_exit = NULL,
 
-    .ipi_send = clint_ipi_send,
-    .ipi_clear = clint_ipi_clear,
+    //.ipi_send = clint_ipi_send,
+    //.ipi_clear = clint_ipi_clear,
     .ipi_init = mpfs_ipi_init,
     .ipi_exit = NULL,
 
     .get_tlbr_flush_limit = mpfs_get_tlbr_flush_limit,
 
-    .timer_value = clint_timer_value,
-    .timer_event_start = clint_timer_event_start,
-    .timer_event_stop = clint_timer_event_stop,
+    //.timer_value = clint_timer_value,
+    //.timer_event_start = clint_timer_event_start,
+    //.timer_event_stop = clint_timer_event_stop,
     .timer_init = mpfs_timer_init,
     .timer_exit = NULL,
 
-    .system_reset = mpfs_system_down,
+    //.system_reset = mpfs_system_down,
 
     //.domains_root_regions = mpfs_domains_root_regions,
     .domains_init = mpfs_domains_init,
