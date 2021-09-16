@@ -144,6 +144,8 @@ struct HSS_BootZIChunkDesc {
  * \warning The chunk table *must* be terminated with a size of 0 sentinel!
  */
 #define BOOT_IMAGE_MAX_NAME_LEN (256)
+#define NEW_FIELDS_LEN 16
+#define BOOT_IMAGE_MAX_NAME_LEN_FIXED (BOOT_IMAGE_MAX_NAME_LEN-NEW_FIELDS_LEN)
 
 #pragma pack(8)
 
@@ -191,8 +193,9 @@ struct HSS_BootImage {
         size_t numChunks;
         size_t firstChunk;
         size_t lastChunk;
-        char name[BOOT_IMAGE_MAX_NAME_LEN-8];
+        char name[BOOT_IMAGE_MAX_NAME_LEN_FIXED];
         uintptr_t arg;
+        uintptr_t mem_size;
     } hart[MAX_NUM_HARTS-1]; // E51 is not counted, only U54s
     char set_name[BOOT_IMAGE_MAX_NAME_LEN];
     size_t bootImageLength;

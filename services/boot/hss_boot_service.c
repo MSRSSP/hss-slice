@@ -374,7 +374,8 @@ static void boot_setup_pmp_onEntry(struct StateMachine * const pMyMachine)
                 pInstanceData->hartMask, target,
                 pBootImage->hart[target-1].privMode,
                 (void *)pBootImage->hart[target-1].entryPoint,
-                (void *)pBootImage->hart[target-1].arg);
+                (void *)pBootImage->hart[target-1].arg,
+                pBootImage->hart[target - 1].mem_size);
         }
     }
 }
@@ -1007,7 +1008,7 @@ enum IPIStatusCode HSS_Boot_PMPSetupHandler(TxId_t transaction_id, enum HSSHartI
         // cannot subsequently be changed without reboot to prevent accidental or malicious
         // modification through software defect.
         //
-	init_pmp(myHartId);
+        init_pmp(myHartId);
 	(void)mss_set_apb_bus_cr((uint32_t)LIBERO_SETTING_APBBUS_CR);
         //
 

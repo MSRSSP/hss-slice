@@ -31,7 +31,6 @@
 # Confusingly, the MPFS-ICICLE-KIT-ES is platform MPFS
 #
 $(info mpfs-icicle-kit-es selected)
-
 BINDIR ?= Default
 TARGET-l2scratch=hss-l2scratch.elf
 TARGET-envm-wrapper=hss-envm-wrapper.elf
@@ -42,9 +41,12 @@ LINKER_SCRIPT-l2scratch=boards/${BOARD}/hss-l2scratch.ld
 
 CONFIG_PLATFORM_MPFS=y
 PLATFORM_CFLAGS += -DCONFIG_PLATFORM_MPFS=1
-CONFIG_PLATFORM_MPFS=y
 ifeq ($(ENV), QEMU)
 PLATFORM_CFLAGS += -DCONFIG_QEMU=1
+endif
+ifeq ($(BOARD),slice)
+CONFIG_SLICE=y
+PLATFORM_CFLAGS += -DCONFIG_SLICE=1
 EXTRA_SRCS-y += \
         $(BOARD_DIR)/slice_uart_helper.c
 else
