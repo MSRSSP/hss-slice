@@ -135,14 +135,34 @@ struct HSS_Boot_LocalData {
     unsigned int iterator;
     uintptr_t ancilliaryData;
     uint32_t msgIndexAux[MAX_NUM_HARTS-1];
+    #if IS_ENABLED(CONFIG_SLICE)
+    uintptr_t bootImage_src; 
+    size_t bootImage_size; 
+    #endif
 };
 
 
 static struct HSS_Boot_LocalData localData[MAX_NUM_HARTS-1] = {
-    { HSS_HART_U54_1, NULL, NULL, 0u, 0u, 0u, IPI_MAX_NUM_OUTSTANDING_COMPLETES, 0u, PERF_CTR_UNINITIALIZED, 0u, 0u, { 0u, 0u, 0u, 0u } },
-    { HSS_HART_U54_2, NULL, NULL, 0u, 0u, 0u, IPI_MAX_NUM_OUTSTANDING_COMPLETES, 0u, PERF_CTR_UNINITIALIZED, 0u, 0u, { 0u, 0u, 0u, 0u } },
-    { HSS_HART_U54_3, NULL, NULL, 0u, 0u, 0u, IPI_MAX_NUM_OUTSTANDING_COMPLETES, 0u, PERF_CTR_UNINITIALIZED, 0u, 0u, { 0u, 0u, 0u, 0u } },
-    { HSS_HART_U54_4, NULL, NULL, 0u, 0u, 0u, IPI_MAX_NUM_OUTSTANDING_COMPLETES, 0u, PERF_CTR_UNINITIALIZED, 0u, 0u, { 0u, 0u, 0u, 0u } },
+    { HSS_HART_U54_1, NULL, NULL, 0u, 0u, 0u, IPI_MAX_NUM_OUTSTANDING_COMPLETES, 0u, PERF_CTR_UNINITIALIZED, 0u, 0u, { 0u, 0u, 0u, 0u }
+    #if IS_ENABLED(CONFIG_SLICE)
+    , 0u, 0u 
+    #endif
+    },
+    { HSS_HART_U54_2, NULL, NULL, 0u, 0u, 0u, IPI_MAX_NUM_OUTSTANDING_COMPLETES, 0u, PERF_CTR_UNINITIALIZED, 0u, 0u, { 0u, 0u, 0u, 0u } 
+    #if IS_ENABLED(CONFIG_SLICE)
+    , 0u, 0u 
+    #endif
+    },
+    { HSS_HART_U54_3, NULL, NULL, 0u, 0u, 0u, IPI_MAX_NUM_OUTSTANDING_COMPLETES, 0u, PERF_CTR_UNINITIALIZED, 0u, 0u, { 0u, 0u, 0u, 0u } 
+    #if IS_ENABLED(CONFIG_SLICE)
+    , 0u, 0u 
+    #endif
+    },
+    { HSS_HART_U54_4, NULL, NULL, 0u, 0u, 0u, IPI_MAX_NUM_OUTSTANDING_COMPLETES, 0u, PERF_CTR_UNINITIALIZED, 0u, 0u, { 0u, 0u, 0u, 0u } 
+    #if IS_ENABLED(CONFIG_SLICE)
+    , 0u, 0u 
+    #endif
+    },
 };
 
 struct HSS_BootImage *pBootImage = NULL;
@@ -242,12 +262,17 @@ const struct {
 static void boot_do_download_chunk(struct HSS_BootChunkDesc const *pChunk, ptrdiff_t subChunkOffset,
     size_t subChunkSize)
 {
+#if IS_ENABLED(CONFIG_SLICE)
+    return;
+#else
     assert(pChunk);
     assert(pChunk->size);
 
     const uintptr_t execAddr = (uintptr_t)pChunk->execAddr + subChunkOffset;
     const uintptr_t loadAddr = (uintptr_t)pBootImage + (uintptr_t)pChunk->loadAddr + subChunkOffset;
+
     memcpy_via_pdma((void *)execAddr, (void*)loadAddr, subChunkSize);
+#endif
 }
 
 static void boot_do_zero_init_chunk(struct HSS_BootZIChunkDesc const *pZiChunk)
@@ -340,7 +365,7 @@ static void boot_setup_pmp_onEntry(struct StateMachine * const pMyMachine)
     enum HSSHartId const target = pInstanceData->target;
 
     pInstanceData->msgIndex = IPI_MAX_NUM_OUTSTANDING_COMPLETES;
-
+    init_pmp(current_hartid());
     bool const primary_boot_hart = (pBootImage->hart[target-1].numChunks) && (pBootImage->hart[target-1].entryPoint);
 
     for (unsigned int i = 0u; i < ARRAY_SIZE(bootMachine); i++) {
@@ -538,7 +563,14 @@ static void boot_download_chunks_handler(struct StateMachine * const pMyMachine)
                     if(pBootImage->hart[target-1].arg != pChunk->execAddr){
                         memcpy((void*)pBootImage->hart[target-1].arg, (void*)pChunk->execAddr, pChunk->size);
                     }
-                    pInstanceData->ancilliaryData = pBootImage->hart[target-1].arg;
+                    pInstanceData->ancilliaryData = (unsigned long)pBootImage + pChunk->loadAddr + pInstanceData->subChunkOffset;
+                } else {
+#if IS_ENABLED(CONFIG_SLICE)
+                    pInstanceData->bootImage_src = (unsigned long)pBootImage + pChunk->loadAddr + pInstanceData->subChunkOffset;
+                    pInstanceData->bootImage_size = pChunk->size;
+                    mHSS_DEBUG_PRINTF(LOG_NORMAL, "%s::%d:bootloader found at 0x%lx, size=%d, bootImage_src=%lx" CRLF,
+                        pMyMachine->pMachineName, pInstanceData->chunkCount, pChunk->execAddr, pChunk->size, pInstanceData->bootImage_src);
+#endif
                 }
 
 #ifdef BOOT_SUB_CHUNK_SIZE
@@ -581,8 +613,16 @@ static void boot_download_chunks_handler(struct StateMachine * const pMyMachine)
     }
 }
 
-static void boot_download_chunks_onExit(struct StateMachine * const pMyMachine)
+static void boot_download_chunks_onExit(struct StateMachine *const pMyMachine)
 {
+#if IS_ENABLED(CONFIG_SLICE)
+    struct HSS_Boot_LocalData *const pInstanceData = pMyMachine->pInstanceData;
+    enum HSSHartId const target = pInstanceData->target;
+    slice_register_boot_hart(target,
+                             pInstanceData->bootImage_src,
+                             pInstanceData->bootImage_size,
+                             pInstanceData->ancilliaryData);
+#endif
 }
 
 /////////////////

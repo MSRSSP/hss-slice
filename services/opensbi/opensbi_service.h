@@ -48,6 +48,13 @@ void HSS_OpenSBI_Setup(void);
 void HSS_OpenSBI_Reboot(void);
 
 void mpfs_domains_register_hart(int hartid, int boot_hartid);
+#if IS_ENABLED(CONFIG_SLICE)
+void slice_register_boot_hart(int boot_hartid,
+                              unsigned long boot_src,
+                              size_t boot_size,
+                              unsigned long fdt_src);
+#endif
+
 void mpfs_domains_deregister_hart(int hartid);
 
 void mpfs_domains_register_boot_hart(char *pName, u32 hartMask, int boot_hartid,

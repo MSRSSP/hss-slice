@@ -73,6 +73,21 @@
 #define MPFS_UART1_ADDR 0x10011000
 #define MPFS_UART_BAUDRATE 115200
 
+#define HART_0_MEM_ADDR 0xa0000000
+#define HART_0_MEM_ORDER 28
+
+#define IPI_REG_WIDTH 4
+
+#define ALL_PERM (SBI_DOMAIN_MEMREGION_MMODE |     \
+                  SBI_DOMAIN_MEMREGION_READABLE |  \
+                  SBI_DOMAIN_MEMREGION_WRITEABLE | \
+                  SBI_DOMAIN_MEMREGION_EXECUTABLE)
+#define ALL_PERM_BUT_X (SBI_DOMAIN_MEMREGION_MMODE |    \
+                        SBI_DOMAIN_MEMREGION_READABLE | \
+                        SBI_DOMAIN_MEMREGION_WRITEABLE)
+#define READ_ONLY (SBI_DOMAIN_MEMREGION_MMODE | \
+                   SBI_DOMAIN_MEMREGION_READABLE)
+
 /**
  * PolarFire SoC has 5 HARTs but HART ID 0 doesn't have S mode. enable only
  * HARTs 1 to 4.
@@ -265,6 +280,9 @@ static struct
     int owner_hartid;
     int boot_pending;
     u64 mem_size;
+    u64 next_boot_src;
+    size_t next_boot_size;
+    unsigned long slice_fdt_src;
 } hart_table[MAX_NUM_HARTS] = {0};
 
 void mpfs_domains_register_hart(int hartid, int boot_hartid)
@@ -301,8 +319,23 @@ bool mpfs_is_last_hart_booting(void)
     }
 }
 
-void mpfs_domains_register_boot_hart(char *pName, u32 hartMask, int boot_hartid, u32 privMode,
-                                     void *entryPoint, void *pArg1, unsigned long mem_size)
+void slice_register_boot_hart(int boot_hartid,
+                              unsigned long boot_src,
+                              size_t boot_size,
+                              unsigned long fdt_src)
+{
+    hart_table[boot_hartid].next_boot_src = boot_src;
+    hart_table[boot_hartid].next_boot_size = boot_size;
+    hart_table[boot_hartid].slice_fdt_src = fdt_src;
+}
+
+void mpfs_domains_register_boot_hart(char *pName,
+                                     u32 hartMask,
+                                     int boot_hartid,
+                                     u32 privMode,
+                                     void *entryPoint,
+                                     void *pArg1,
+                                     unsigned long mem_size)
 {
     assert(hart_table[boot_hartid].owner_hartid == boot_hartid);
 
@@ -314,27 +347,62 @@ void mpfs_domains_register_boot_hart(char *pName, u32 hartMask, int boot_hartid,
     hart_table[boot_hartid].mem_size = mem_size;
 }
 
+static int init_domain_shared_mem(struct sbi_domain_memregion * regions, unsigned int count, unsigned int * out_count){
+    // Dirty region for test; To be removed
+    struct sbi_scratch *const pScratch = sbi_scratch_thishart_ptr();
+    regions[count].base = pScratch->fw_start;
+    regions[count].order = 24;
+    regions[count].flags = ALL_PERM;
+    count++;
+    if(count > DOMAIN_REGION_MAX_COUNT){
+        return SBI_ERR_FAILED;
+    }
+    // CLINT map except for IPI
+    regions[count].base = MPFS_CLINT_ADDR + MPFS_HART_COUNT*IPI_REG_WIDTH;
+    regions[count].order = 30;
+    regions[count].flags = ALL_PERM_BUT_X;
+    count++;
+    if(count > DOMAIN_REGION_MAX_COUNT){
+        return SBI_ERR_FAILED;
+    }
+    // PLIC 
+    regions[count].base = MPFS_PLIC_ADDR;
+    regions[count].order = 30;
+    regions[count].flags = ALL_PERM_BUT_X;
+    count++;
+    if(count > DOMAIN_REGION_MAX_COUNT){
+        return SBI_ERR_FAILED;
+    }
+    // PLIC 
+    regions[count].base = 0x2008000000;
+    regions[count].order = 27;
+    regions[count].flags = ALL_PERM_BUT_X;
+    count++;
+    if(count > DOMAIN_REGION_MAX_COUNT){
+        return SBI_ERR_FAILED;
+    }
+    // Host memory. 
+    regions[count].base = HART_0_MEM_ADDR;
+    regions[count].order = HART_0_MEM_ORDER;
+    regions[count].flags = READ_ONLY;
+    count++;
+    if(count > DOMAIN_REGION_MAX_COUNT){
+        return SBI_ERR_FAILED;
+    }
+    *out_count = count;
+    return 0;
+}
+
 static int init_domain_mem(struct sbi_domain *pDom)
 {
     unsigned count = 0;
     struct sbi_scratch *const pScratch = sbi_scratch_thishart_ptr();
-    static unsigned long all_perm = SBI_DOMAIN_MEMREGION_MMODE |
-                                    SBI_DOMAIN_MEMREGION_READABLE |
-                                    SBI_DOMAIN_MEMREGION_WRITEABLE |
-                                    SBI_DOMAIN_MEMREGION_EXECUTABLE;
     sbi_domain_memregion_init(pScratch->fw_start & ~((1UL << log2roundup(pScratch->fw_size)) - 1UL), 1 << log2roundup(pScratch->fw_size),
                               0, &pDom->regions[count++]);
     sbi_printf("hartid =%d: fw init %lx %lx in dom %s\n", current_hartid(), pScratch->fw_start & ~((1UL << log2roundup(pScratch->fw_size)) - 1UL), log2roundup(pScratch->fw_size), pDom->name);
-    pDom->regions[count].base = 0x2000000;
-    pDom->regions[count].order = 30;
-    pDom->regions[count].flags = all_perm;
-    count++;
-    pDom->regions[count].base = 0x2008000000;
-    pDom->regions[count].order = 27;
-    pDom->regions[count].flags = all_perm;
-    count++;
+    init_domain_shared_mem(pDom->regions, count, &count);
     sbi_domain_memregion_init(pDom->next_addr & (~((1UL << 28) - 1)),
-                              pDom->dom_mem_size, all_perm, &pDom->regions[count++]);
+                              pDom->dom_mem_size, ALL_PERM, &pDom->regions[count++]);
     if (count > DOMAIN_REGION_MAX_COUNT)
     {
         return SBI_EINVAL;
@@ -370,6 +438,10 @@ static int mpfs_domains_init(void)
                 pDom->dom_mem_size = hart_table[boot_hartid].mem_size;
                 pDom->system_reset_allowed = TRUE;
                 pDom->possible_harts = pMask;
+                pDom->slice_type = SLICE_TYPE_SLICE;
+                pDom->next_boot_src = hart_table[boot_hartid].next_boot_src;
+                pDom->next_boot_size = hart_table[boot_hartid].next_boot_size;
+                pDom->slice_dt_src = (void *)hart_table[boot_hartid].slice_fdt_src;
                 init_domain_mem(pDom);
                 result = sbi_domain_register(pDom, pMask);
                 if (result)
