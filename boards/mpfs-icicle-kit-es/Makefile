@@ -46,6 +46,7 @@ PLATFORM_CFLAGS += -DCONFIG_QEMU=1
 endif
 ifeq ($(BOARD),slice)
 CONFIG_SLICE=y
+CONFIG_SOC_FPGA_DESIGN_XML="boards/$(BOARD)/soc_fpga_design/xml/ICICLE_MSS_mss_cfg.xml"
 PLATFORM_CFLAGS += -DCONFIG_SLICE=1
 EXTRA_SRCS-y += \
         $(BOARD_DIR)/slice_uart_helper.c
