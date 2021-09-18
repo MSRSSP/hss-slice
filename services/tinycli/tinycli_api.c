@@ -58,6 +58,7 @@
 #    include "beu_service.h"
 #endif
 
+#  include "slice/slice_pmp.h"
 #define mMAX_NUM_TOKENS 40
 static size_t argc_tokenCount = 0u;
 static char *argv_tokenArray[mMAX_NUM_TOKENS];
@@ -434,6 +435,7 @@ static void tinyCLI_Debug_(void)
         DBG_PERFCTR,
 #endif
         DBG_WDOG,
+        DBG_PMP,
     };
 
     const struct tinycli_key debugKeys[] = {
@@ -453,6 +455,8 @@ static void tinyCLI_Debug_(void)
         { DBG_PERFCTR , "PERFCTR", "display perf counters" },
 #endif
         { DBG_WDOG ,    "WDOG",    "display watchdog statistics" },
+        { DBG_PMP,       "PMP",      "print PMP info" },
+
     };
 
     size_t keyIndex;
@@ -505,6 +509,10 @@ static void tinyCLI_Debug_(void)
 #if IS_ENABLED(CONFIG_SERVICE_WDOG)
             HSS_Wdog_DumpStats();
 #endif
+            break;
+        
+        case DBG_PMP:
+            slice_pmp_dump();
             break;
 
         default:
