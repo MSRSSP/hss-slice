@@ -349,7 +349,7 @@ bool mpfs_is_last_hart_booting(void)
 }
 
 void mpfs_domains_register_boot_hart(char *pName, u32 hartMask, int boot_hartid, u32 privMode,
-     void * entryPoint, void * pArg1)
+     void * entryPoint, void * pArg1, unsigned long unused)
 {
     assert(hart_table[boot_hartid].owner_hartid == boot_hartid);
 
