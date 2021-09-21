@@ -28,7 +28,9 @@
 
 #include "tinycli_service.h"
 #include "tinycli_hexdump.h"
-
+#if CONFIG_SLICE
+#include "tinycli_slice.h"
+#endif
 #include "hss_memtest.h"
 #include "hss_progress.h"
 #include "hss_version.h"
@@ -108,7 +110,8 @@ enum CmdId {
 #if IS_ENABLED(CONFIG_SERVICE_SCRUB)
     CMD_SCRUB,
 #endif
-    CMD_INVALID
+    CMD_INVALID,
+    CMD_SLICE,
 };
 
 struct tinycli_key {
@@ -124,6 +127,7 @@ const struct tinycli_key cmdKeys[] = {
     { CMD_QUIT,    "QUIT",    "Quit TinyCLI and return to regular boot process." },
     { CMD_BOOT,    "BOOT",    "Quit TinyCLI and return to regular boot process." },
     { CMD_RESET,   "RESET",   "Reset the E51." },
+    { CMD_SLICE,   "SLICE",   "Slice operations: START, STOP, etc." },
     { CMD_HELP,    "HELP",    "Display command summary / command help information." },
     { CMD_VERSION, "VERSION", "Display system version information." },
     { CMD_UPTIME,  "UPTIME",  "Display uptime information." },
@@ -190,6 +194,7 @@ static struct tinycli_command commands[] = {
     { CMD_QUIT,    true,  tinyCLI_CmdHandler_ },
     { CMD_BOOT,    true,  tinyCLI_CmdHandler_ },
     { CMD_RESET,   true,  tinyCLI_CmdHandler_ },
+    { CMD_SLICE,   true,  tinyCLI_CmdHandler_ },
     { CMD_HELP,    false, tinyCLI_CmdHandler_ },
     { CMD_VERSION, false, tinyCLI_CmdHandler_ },
     { CMD_UPTIME,  false, tinyCLI_CmdHandler_ },
@@ -509,10 +514,6 @@ static void tinyCLI_Debug_(void)
 #if IS_ENABLED(CONFIG_SERVICE_WDOG)
             HSS_Wdog_DumpStats();
 #endif
-            break;
-        
-        case DBG_PMP:
-            slice_pmp_dump();
             break;
 
         default:
@@ -955,6 +956,10 @@ static void tinyCLI_CmdHandler_(int tokenId)
 
     case CMD_RESET:
         tinyCLI_Reset_();
+        break;
+
+    case CMD_SLICE:
+        tinyCLI_Slice(argc_tokenCount-1, (const char**)&argv_tokenArray[1]);
         break;
 
     case CMD_QUIT:

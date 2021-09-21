@@ -347,7 +347,7 @@ void mpfs_domains_register_boot_hart(char *pName,
     hart_table[boot_hartid].mem_size = mem_size;
 }
 
-static int init_domain_shared_mem(struct sbi_domain_memregion * regions, unsigned int count, unsigned int * out_count){
+static int init_slice_shared_mem(struct sbi_domain_memregion * regions, unsigned int count, unsigned int * out_count){
     // Dirty region for test; To be removed
     struct sbi_scratch *const pScratch = sbi_scratch_thishart_ptr();
     regions[count].base = pScratch->fw_start;
@@ -393,14 +393,14 @@ static int init_domain_shared_mem(struct sbi_domain_memregion * regions, unsigne
     return 0;
 }
 
-static int init_domain_mem(struct sbi_domain *pDom)
+int init_slice_mem_regions(struct sbi_domain *pDom)
 {
     unsigned count = 0;
     struct sbi_scratch *const pScratch = sbi_scratch_thishart_ptr();
     sbi_domain_memregion_init(pScratch->fw_start & ~((1UL << log2roundup(pScratch->fw_size)) - 1UL), 1 << log2roundup(pScratch->fw_size),
                               0, &pDom->regions[count++]);
     sbi_printf("hartid =%d: fw init %lx %lx in dom %s\n", current_hartid(), pScratch->fw_start & ~((1UL << log2roundup(pScratch->fw_size)) - 1UL), log2roundup(pScratch->fw_size), pDom->name);
-    init_domain_shared_mem(pDom->regions, count, &count);
+    init_slice_shared_mem(pDom->regions, count, &count);
     sbi_domain_memregion_init(pDom->next_addr & (~((1UL << 28) - 1)),
                               pDom->dom_mem_size, ALL_PERM, &pDom->regions[count++]);
     if (count > DOMAIN_REGION_MAX_COUNT)
@@ -415,6 +415,8 @@ static int mpfs_domains_init(void)
 {
     // register all AMP domains
     int result = SBI_EINVAL;
+    // Set hart0 as host hart;
+    register_host_hartid(0);
 
     for (int hartid = 1; hartid < ARRAY_SIZE(hart_table); hartid++)
     {
@@ -442,7 +444,7 @@ static int mpfs_domains_init(void)
                 pDom->next_boot_src = hart_table[boot_hartid].next_boot_src;
                 pDom->next_boot_size = hart_table[boot_hartid].next_boot_size;
                 pDom->slice_dt_src = (void *)hart_table[boot_hartid].slice_fdt_src;
-                init_domain_mem(pDom);
+                init_slice_mem_regions(pDom);
                 result = sbi_domain_register(pDom, pMask);
                 if (result)
                 {
@@ -490,6 +492,7 @@ const struct sbi_platform_operations platform_ops = {
     //.system_reset = mpfs_system_down,
 
     .domains_init = mpfs_domains_init,
+    .slice_init_mem_region =  init_slice_mem_regions,
 
     .vendor_ext_check = NULL,
     .vendor_ext_provider = NULL,

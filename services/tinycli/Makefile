@@ -29,7 +29,11 @@
 SRCS-$(CONFIG_SERVICE_TINYCLI) += \
 	services/tinycli/tinycli_api.c \
 	services/tinycli/tinycli_service.c \
-	services/tinycli/tinycli_hexdump.c \
+	services/tinycli/tinycli_hexdump.c
+
+ifeq ($(BOARD),slice)
+	SRCS-$(CONFIG_SERVICE_TINYCLI) += services/tinycli/tinycli_slice.c
+endif
 
 INCLUDES +=\
 	-I./services/tinycli \
