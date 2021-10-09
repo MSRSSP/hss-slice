@@ -21,9 +21,14 @@ struct tinycli_key {
 static bool tinyCLI_NameToKeyIndex_(struct tinycli_key const *const keys,
                                     size_t numKeys, char const *const pToken,
                                     size_t *pIndex);
-static void slice_sw_start(unsigned int dom_index);
+static void slice_sw_start(int dom_index);
 
-static void slice_sw_start(unsigned int dom_index) {
+static void slice_sw_start(int dom_index) {
+  if (dom_index < 1) {
+    mHSS_FANCY_PRINTF(LOG_NORMAL, "Please use 1 arguments dom_index > 0. "
+                                  "Refer to the dom_index from slice dump.\n");
+    return;
+  }
   unsigned int index_out, hart_id;
   struct sbi_domain *dom = sbi_index_to_domain(dom_index);
   sbi_hartmask_for_each_hart(hart_id, &dom->assigned_harts) {
@@ -109,7 +114,8 @@ void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
       {SLICE_CREATE, "CREATE", "create a slice."},
       {SLICE_DELETE, "DELETE", "delete a slice."},
       {SLICE_DUMP, "DUMP", "dump slice info."},
-      {SLICE_PMP, "PMP", "dump pmp info."}};
+      {SLICE_PMP, "PMP", "dump pmp info."},
+  };
   unsigned int dom_index = -1;
   unsigned int base_arg_idx = 0;
   if (narg > 1) {
@@ -126,9 +132,7 @@ void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
       break;
     }
     case SLICE_START: {
-      if (dom_index > 0) {
-        slice_sw_start(dom_index);
-      }
+      slice_sw_start(dom_index);
       break;
     }
     case SLICE_DELETE: {
@@ -145,7 +149,11 @@ void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
       break;
     }
     case SLICE_PMP: {
-      slice_pmp_dump();
+      if (dom_index > 0) {
+        slice_send_ipi_to_domain(dom_index, SLICE_IPI_PMP_DEBUG);
+      } else {
+        slice_pmp_dump();
+      }
       break;
     }
     default:
