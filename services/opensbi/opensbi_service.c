@@ -38,6 +38,9 @@
 
 #include "mpfs_reg_map.h"
 #include "sbi_version.h"
+#include "sbi/sbi_platform.h"
+#include "sbi/sbi_ipi.h"
+#include "sbi/riscv_atomic.h"
 
 #if !IS_ENABLED(CONFIG_OPENSBI)
 #  error OPENSBI needed for this module
@@ -74,6 +77,7 @@ asm(".align 3\n"
 extern const size_t scratch_addr;
 union t_HSS_scratchBuffer *pScratches = 0;
 
+extern unsigned long _hss_start, _hss_end;
 static void opensbi_scratch_setup(enum HSSHartId hartid)
 {
     assert(hartid < MAX_NUM_HARTS);
@@ -86,7 +90,6 @@ static void opensbi_scratch_setup(enum HSSHartId hartid)
     pScratches[hartid].scratch.hartid_to_scratch = (unsigned long)l_hartid_to_scratch;
     pScratches[hartid].scratch.platform_addr = (unsigned long)&platform;
 
-    extern unsigned long _hss_start, _hss_end;
     pScratches[hartid].scratch.fw_start = (unsigned long)&_hss_start;
     pScratches[hartid].scratch.fw_size = (unsigned long)&_hss_end - (unsigned long)&_hss_start;
 }
@@ -178,6 +181,7 @@ void HSS_OpenSBI_Setup(void)
         opensbi_scratch_setup(hartid);
 
         int rc = sbi_console_init(&(pScratches[hartid].scratch));
+        //sbi_platform_domains_init(&platform);
         if (rc)
             sbi_hart_hang();
         } else {
@@ -185,20 +189,31 @@ void HSS_OpenSBI_Setup(void)
         }
 }
 
-int relocate_sbi(unsigned long slice_fw_start, u32 hartid){
+#define SLICE_FW_COPY_OFFSET 0x1000000
+
+int relocate_sbi(unsigned long slice_fw_start, unsigned long fw_from, u32 hartid){
     /*Reset relocation status.*/
     extern unsigned long _relocate_lottery;
     extern unsigned long _relocate_status;
-    _relocate_lottery = 0;
-    _relocate_status = 0;
     unsigned long slice_fw_size;
+    unsigned long* new_relocate_lottery_ptr;
+    unsigned long* new_relocate_status_ptr;
+    long long offset=0;
     slice_fw_size =  0x200000;
-    memcpy((void*)slice_fw_start, (void*)pScratches[hartid].scratch.fw_start, slice_fw_size);
+    memcpy((void*)slice_fw_start, (void*)fw_from, slice_fw_size);
+    offset = (long long)slice_fw_start - (long long)&_hss_start;
+    new_relocate_lottery_ptr = (unsigned long *)(offset + (long long)&_relocate_lottery);
+    new_relocate_status_ptr = (unsigned long *)(offset + (long long)&_relocate_status);
+    *new_relocate_lottery_ptr = 0UL;
+    *new_relocate_status_ptr = 0UL;
     return slice_fw_size;
 }
 
+static atomic_t host_init_domain = ATOMIC_INITIALIZER(0);
+static atomic_t host_init_complete = ATOMIC_INITIALIZER(0);
 void __noreturn HSS_OpenSBI_DoBoot(enum HSSHartId hartid, bool sbi_is_shared)
 {
+    static unsigned long fsbl_addr = (unsigned long)&_hss_start;
     uint32_t mstatus_val = mHSS_CSR_READ(CSR_MSTATUS);
     mstatus_val = EXTRACT_FIELD(mstatus_val, MSTATUS_MPIE);
     mHSS_CSR_WRITE(CSR_MSTATUS, mstatus_val);
@@ -211,7 +226,23 @@ void __noreturn HSS_OpenSBI_DoBoot(enum HSSHartId hartid, bool sbi_is_shared)
     unsigned long slice_fw_start = slice_mem_start_this_hart();
     if(slice_fw_start && sbi_is_shared){
         if(slice_is_owner_hart()){
-            unsigned long slice_fw_size = relocate_sbi(slice_fw_start, hartid);
+            init_slice_sbi_copy_status();
+            if(atomic_add_return(&host_init_domain, 1)==1){
+                sbi_printf("%s: relocate_sbi 0 to %lx from %lx.\n", __func__, fsbl_addr + SLICE_FW_COPY_OFFSET, fsbl_addr);
+				relocate_sbi(fsbl_addr + SLICE_FW_COPY_OFFSET, fsbl_addr, hartid);
+                sbi_domain_init(&pScratches[0].scratch, 0);
+                sbi_platform_domains_init(&platform);
+                sbi_ipi_init(&pScratches[0].scratch, TRUE);
+                if(atomic_add_return(&host_init_complete, 1)!=1){
+                    sbi_printf("%s: should not reach here.\n", __func__);
+                    wfi();
+                }
+			}
+            while(atomic_read(&host_init_complete)==0){
+            }
+            memset((void*)slice_mem_start_this_hart(), 0, slice_mem_size_this_hart());
+            sbi_printf("%s: relocate_sbi to %lx from %lx.\n", __func__, slice_fw_start, fsbl_addr + SLICE_FW_COPY_OFFSET);
+            unsigned long slice_fw_size = relocate_sbi(slice_fw_start, fsbl_addr + SLICE_FW_COPY_OFFSET, hartid);
             if(!slice_fw_size){
                 sbi_hart_hang();
             }

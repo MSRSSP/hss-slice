@@ -1,3 +1,8 @@
+#include <stdlib.h>
+#include <string.h> // strcasecmp(), strtok(), strtok_r()
+#include <strings.h>
+
+#include "assert.h"
 #include "config.h"
 #include "hss_boot_service.h"
 #include "hss_debug.h"
@@ -6,11 +11,6 @@
 #include "sbi/sbi_hart.h"
 #include "slice/slice_mgr.h"
 #include "slice/slice_pmp.h"
-
-#include "assert.h"
-#include <stdlib.h>
-#include <string.h> // strcasecmp(), strtok(), strtok_r()
-#include <strings.h>
 
 struct tinycli_key {
   const int tokenId;
@@ -98,6 +98,13 @@ static void slice_create_cli(size_t narg, const char **argv) {
   }
 }
 
+static void slice_help(const struct tinycli_key *debugKeys, size_t nKeys) {
+  for (size_t i = 0; i < nKeys; ++i) {
+    mHSS_FANCY_PRINTF(LOG_NORMAL, "slice %s -- %s\n", debugKeys[i].name,
+                      debugKeys[i].helpString);
+  }
+}
+
 void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
   size_t keyIndex;
   enum slice_cmd {
@@ -107,6 +114,8 @@ void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
     SLICE_DELETE,
     SLICE_DUMP,
     SLICE_PMP,
+    SLICE_HELP,
+    SLICE_END,
   };
   const struct tinycli_key debugKeys[] = {
       {SLICE_STOP, "STOP", "stop a slice."},
@@ -115,8 +124,9 @@ void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
       {SLICE_DELETE, "DELETE", "delete a slice."},
       {SLICE_DUMP, "DUMP", "dump slice info."},
       {SLICE_PMP, "PMP", "dump pmp info."},
+      {SLICE_HELP, "help", "slice help."},
   };
-  unsigned int dom_index = -1;
+  int dom_index = -1;
   unsigned int base_arg_idx = 0;
   if (narg > 1) {
     dom_index = strtoul(argv_tokenArray[base_arg_idx + 1], 0, 10);
@@ -149,7 +159,7 @@ void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
       break;
     }
     case SLICE_PMP: {
-      if (dom_index > 0) {
+      if (dom_index >= 0) {
         slice_send_ipi_to_domain(dom_index, SLICE_IPI_PMP_DEBUG);
       } else {
         slice_pmp_dump();
@@ -157,7 +167,7 @@ void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
       break;
     }
     default:
-      mHSS_FANCY_PRINTF(LOG_NORMAL, "unimplemented: keyIndex=%d\n", keyIndex);
+      slice_help(debugKeys, SLICE_END);
       break;
     }
   }

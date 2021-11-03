@@ -335,6 +335,11 @@ unsigned long slice_mem_start_this_hart(void){
     int owner = hart_table[hartid].owner_hartid;
     return hart_table[owner].mem_start;
 }
+unsigned long slice_mem_size_this_hart(void){
+    int hartid = current_hartid();
+    int owner = hart_table[hartid].owner_hartid;
+    return hart_table[owner].mem_size;
+}
 
 bool slice_is_owner_hart(void){
     int hartid = current_hartid();
@@ -344,7 +349,22 @@ bool slice_is_owner_hart(void){
 bool is_slice_sbi_copy_done(void){
     int hartid = current_hartid();
     int owner = hart_table[hartid].owner_hartid;
+    if(hart_table[hartid].boot_pending == 0){
+        // This is a slice reset. 
+        // Wait for primary hart to reset boot status.
+        return false;
+    }
     return hart_table[owner].boot_pending == 0;
+}
+
+void init_slice_sbi_copy_status(void){
+    int owner = current_hartid();
+    hart_table[owner].boot_pending = 1;
+    for(u32 hartid =0; hartid < MAX_NUM_HARTS; ++hartid){
+        if(owner == hart_table[hartid].owner_hartid){
+            hart_table[hartid].boot_pending = 1;
+        }
+    }
 }
 
 #define SLICE_OS_OFFSET 0x200000

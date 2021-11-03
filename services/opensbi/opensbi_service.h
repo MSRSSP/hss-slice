@@ -61,8 +61,12 @@ void slice_register_boot_hart(int boot_hartid,
                               unsigned long fdt_src);
 // Returns the slice memory start for this hart;
 unsigned long slice_mem_start_this_hart(void);
+// Returns the slice memory size for this hart;
+unsigned long slice_mem_size_this_hart(void);
 // Return True if the slice's owner hart already copied the hss-l2 to slice memory;
 bool is_slice_sbi_copy_done(void);
+void init_slice_sbi_copy_status(void);
+
 // Return True if this hart is the slice's owner hart;
 bool slice_is_owner_hart(void);
 #endif

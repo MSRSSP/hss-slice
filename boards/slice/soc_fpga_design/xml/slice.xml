@@ -425,7 +425,7 @@
       <pmp_h0>
         <registers>
           <register address="0x000003A0" description="PMP  configuration for 8 adress regions, bit 0 read, bit 1 write, bit 2 execute, bit 7 disable, bits 3,4 address format  (0x18 => NAPOT) " name="CSR_PMPCFG0">
-            <field Type="RW" name="PMP0CFG" offset="0" width="8">0x98</field>
+            <field Type="RW" name="PMP0CFG" offset="0" width="8">0x9f</field>
             <field Type="RW" name="PMP1CFG" offset="8" width="8">0x0</field>
             <field Type="RW" name="PMP2CFG" offset="16" width="8">0x00</field>
             <field Type="RW" name="PMP3CFG" offset="24" width="8">0x00</field>
