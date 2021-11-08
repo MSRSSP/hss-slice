@@ -278,7 +278,7 @@ _wait_for_boot_hart:
 
 	csrw	CSR_SATP, 0 # clear SATP early on U54s, as it appears to be coming up randomly
 
-.jum_sbi_if_slice:
+.jump_sbi_if_slice:
 	lla	 a0, _slice_sbi_boot
 	REG_L a0, (a0)
 	li	a3, 0x8000000

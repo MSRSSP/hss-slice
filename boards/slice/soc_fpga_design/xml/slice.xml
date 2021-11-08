@@ -426,7 +426,7 @@
         <registers>
           <register address="0x000003A0" description="PMP  configuration for 8 adress regions, bit 0 read, bit 1 write, bit 2 execute, bit 7 disable, bits 3,4 address format  (0x18 => NAPOT) " name="CSR_PMPCFG0">
             <field Type="RW" name="PMP0CFG" offset="0" width="8">0x9f</field>
-            <field Type="RW" name="PMP1CFG" offset="8" width="8">0x0</field>
+            <field Type="RW" name="PMP1CFG" offset="8" width="8">0x9f</field>
             <field Type="RW" name="PMP2CFG" offset="16" width="8">0x00</field>
             <field Type="RW" name="PMP3CFG" offset="24" width="8">0x00</field>
             <field Type="RW" name="PMP4CFG" offset="32" width="8">0x00</field>
@@ -448,7 +448,7 @@
             <field Type="RW" name="CSR_PMPADDR0" offset="0" width="64">0x23ffffff</field>
           </register>
           <register address="0x000003B1" description="PMP ADRESS and size, format determined  from bit 3 and 4 of configuration byte in CSR_PMPCFGx" name="CSR_PMPADDR1">
-            <field Type="RW" name="CSR_PMPADDR1" offset="0" width="64">0x00</field>
+            <field Type="RW" name="CSR_PMPADDR1" offset="0" width="64">0x201ffff</field>
           </register>
           <register address="0x000003B2" description="PMP ADRESS and size, format determined  from bit 3 and 4 of configuration byte in CSR_PMPCFGx" name="CSR_PMPADDR2">
             <field Type="RW" name="CSR_PMPADDR2" offset="0" width="64">0x00</field>

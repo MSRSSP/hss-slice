@@ -180,7 +180,7 @@ static int mpfs_irqchip_init(bool cold_boot)
     int rc = 0;
     u32 hartid = current_hartid();
 
-    if (cold_boot)
+    if (hartid == slice_host_hartid())
     {
         rc = plic_cold_irqchip_init(&plicInfo);
     }
@@ -331,6 +331,13 @@ void slice_register_boot_hart(int boot_hartid,
     hart_table[boot_hartid].slice_fdt_src = fdt_src;
 }
 
+static int slice_unregister_hart(unsigned hartid){
+    sbi_printf("%s: hartid = %d\n", __func__, hartid);
+    memset(&hart_table[hartid], 0, sizeof(hart_table[hartid]));
+    hart_table[hartid].owner_hartid = hartid;
+    return 0;
+}
+
 unsigned long slice_mem_start_this_hart(void){
     int hartid = current_hartid();
     int owner = hart_table[hartid].owner_hartid;
@@ -368,24 +375,35 @@ void init_slice_sbi_copy_status(void){
     }
 }
 
-#define SLICE_OS_OFFSET 0x200000
+static int _mpfs_domains_register_boot_hart(char *pName,
+                                     u32 hartMask,
+                                     int boot_hartid,
+                                     u32 privMode,
+                                     unsigned long mem_start,
+                                     unsigned long mem_size)
+{
+    hart_table[boot_hartid].owner_hartid = boot_hartid;
+    memcpy(hart_table[boot_hartid].name, pName, ARRAY_SIZE(hart_table[boot_hartid].name) - 1);
+    hart_table[boot_hartid].mem_size = mem_size;
+    hart_table[boot_hartid].mem_start = mem_start;
+    hart_table[boot_hartid].hartMask.bits[0] = hartMask;
+    u32 hartid;
+    sbi_hartmask_for_each_hart(hartid, &hart_table[boot_hartid].hartMask){
+        mpfs_domains_register_hart(hartid, boot_hartid);
+    }
+    hart_table[boot_hartid].next_mode = privMode;
+    return 0;
+}
+
 void mpfs_domains_register_boot_hart(char *pName,
                                      u32 hartMask,
                                      int boot_hartid,
                                      u32 privMode,
                                      void *entryPoint,
                                      void *pArg1,
-                                     unsigned long mem_size)
-{
+                                     unsigned long mem_size){
     assert(hart_table[boot_hartid].owner_hartid == boot_hartid);
-
-    memcpy(hart_table[boot_hartid].name, pName, ARRAY_SIZE(hart_table[boot_hartid].name) - 1);
-    hart_table[boot_hartid].mem_size = mem_size;
-    hart_table[boot_hartid].mem_start = (u64)entryPoint;
-    hart_table[boot_hartid].next_addr = (u64)entryPoint + SLICE_OS_OFFSET;
-    hart_table[boot_hartid].next_arg1 = (u64)pArg1 + SLICE_OS_OFFSET;
-    hart_table[boot_hartid].hartMask.bits[0] = hartMask;
-    hart_table[boot_hartid].next_mode = privMode;
+    _mpfs_domains_register_boot_hart(pName, hartMask, boot_hartid, privMode, (unsigned long)entryPoint, mem_size);
 }
 
 static int init_slice_shared_mem(struct sbi_domain_memregion * regions, unsigned int count, unsigned int * out_count){
@@ -450,7 +468,7 @@ static int mpfs_domains_init(void)
     int result = SBI_EINVAL;
     // Set hart0 as host hart;
     register_host_hartid(0);
-
+    sbi_printf("mpfs_domains_init\n");
     for (int hartid = 1; hartid < ARRAY_SIZE(hart_table); hartid++)
     {
         const int boot_hartid = hart_table[hartid].owner_hartid;
@@ -511,7 +529,9 @@ const struct sbi_platform_operations platform_ops = {
 
     .domains_init = mpfs_domains_init,
     .slice_init_mem_region =  init_slice_mem_regions,
-
+    .slice_unregister_hart = slice_unregister_hart,
+    .slice_register_hart = _mpfs_domains_register_boot_hart,
+    .slice_register_source = slice_register_boot_hart,
     .vendor_ext_check = NULL,
     .vendor_ext_provider = NULL,
 };

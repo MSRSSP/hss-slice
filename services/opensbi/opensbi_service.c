@@ -42,6 +42,7 @@
 #include "sbi/sbi_ipi.h"
 #include "sbi/riscv_atomic.h"
 #include "slice/slice_reset.h"
+#include "slice/slice.h"
 
 #if !IS_ENABLED(CONFIG_OPENSBI)
 #  error OPENSBI needed for this module
@@ -181,7 +182,7 @@ void HSS_OpenSBI_Setup(void)
         mHSS_CSR_WRITE(CSR_MIE, 0u);
         d_reset_init(RESET_BASE_ADDR);
         opensbi_scratch_setup(hartid);
-
+        sbi_platform_ops(&platform)->irqchip_init(true);
         int rc = sbi_console_init(&(pScratches[hartid].scratch));
         //sbi_platform_domains_init(&platform);
         if (rc)
@@ -242,6 +243,7 @@ void __noreturn HSS_OpenSBI_DoBoot(enum HSSHartId hartid, bool sbi_is_shared)
 			}
             while(atomic_read(&host_init_complete)==0){
             }
+            sbi_printf("%s: clear mem %lx, %lx.\n", __func__, slice_mem_start_this_hart(), slice_mem_size_this_hart());
             memset((void*)slice_mem_start_this_hart(), 0, slice_mem_size_this_hart());
             sbi_printf("%s: relocate_sbi to %lx from %lx.\n", __func__, slice_fw_start, fsbl_addr + SLICE_FW_COPY_OFFSET);
             unsigned long slice_fw_size = relocate_sbi(slice_fw_start, fsbl_addr + SLICE_FW_COPY_OFFSET, hartid);
@@ -256,9 +258,12 @@ void __noreturn HSS_OpenSBI_DoBoot(enum HSSHartId hartid, bool sbi_is_shared)
             mpfs_mark_hart_as_booted(hartid);
             slice_to_sbi((void*)slice_fw_start, (void*)0, 0);
         }
-    }else{
-        sbi_printf("%s: hart %d: sbi_init.\n", __func__, current_hartid());
+    }else if (slice_fw_start){
+        sbi_printf("%s: sbi_init\n", __func__);
         sbi_init(&(pScratches[hartid].scratch));
+    }else{
+        sbi_printf("%s: nonslice_sbi_init\n", __func__);
+        nonslice_sbi_init();
     }
 
     while (1) {

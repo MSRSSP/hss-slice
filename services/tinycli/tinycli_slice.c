@@ -79,6 +79,7 @@ static bool tinyCLI_NameToKeyIndex_(struct tinycli_key const *const keys,
 
 // slice create 0x10 0x1000000000 0x20000000 0xa00026f0 0x16e7400 0xa16f7af0
 // slice create 0x6 0x80000000 0x20000000 0xa00106f0 0x16e7400 0xa16f7af0
+#define PRV_S 1
 static void slice_create_cli(size_t narg, const char **argv) {
   if (narg < 6) {
     mHSS_FANCY_PRINTF(LOG_NORMAL, "Please use 6 arguments cpu_mask mem_start "
@@ -92,12 +93,8 @@ static void slice_create_cli(size_t narg, const char **argv) {
   unsigned long image_size = strtoul(argv[4], 0, 16);
   unsigned long fdt_from = strtoul(argv[5], 0, 16);
   struct sbi_hartmask hartmask;
-  size_t cpu = 0;
-  for (; cpu_mask > 0; cpu++) {
-    if (cpu_mask & 1)
-      sbi_hartmask_set_hart(cpu, &hartmask);
-    cpu_mask <<= 1;
-  }
+  sbi_hartmask_clear_all(&hartmask);
+  hartmask.bits[0] = (unsigned)cpu_mask;
   int err = slice_create(hartmask, mem_start, mem_size, image_from, image_size,
                          fdt_from, PRV_S);
   if (err) {
@@ -121,6 +118,7 @@ void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
     SLICE_CREATE,
     SLICE_DELETE,
     SLICE_DUMP,
+    SLICE_HW_RESET,
     SLICE_PMP,
     SLICE_HELP,
     SLICE_END,
@@ -131,6 +129,8 @@ void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
       {SLICE_CREATE, "CREATE", "create a slice."},
       {SLICE_DELETE, "DELETE", "delete a slice."},
       {SLICE_DUMP, "DUMP", "dump slice info."},
+      {SLICE_HW_RESET, "HW_RESET",
+       "reset a slice via per-core reset unit (Only work in QEMU)."},
       {SLICE_PMP, "PMP", "dump pmp info."},
       {SLICE_HELP, "help", "slice help."},
   };
@@ -164,6 +164,10 @@ void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
     }
     case SLICE_DUMP: {
       sbi_domain_dump_all("");
+      break;
+    }
+    case SLICE_HW_RESET: {
+      slice_hw_reset(dom_index);
       break;
     }
     case SLICE_PMP: {
