@@ -9,6 +9,7 @@
 #include "hss_types.h"
 #include "sbi/sbi_domain.h"
 #include "sbi/sbi_hart.h"
+#include "sbi/sbi_hartmask.h"
 #include "slice/slice_mgr.h"
 #include "slice/slice_pmp.h"
 
@@ -35,7 +36,7 @@ static void slice_sw_start(int dom_index) {
     if (!HSS_Boot_SBISetupRequest(hart_id, &index_out)) {
       mHSS_FANCY_PRINTF(LOG_NORMAL, "%s: cannot start: hart_id=%d\n", __func__,
                         hart_id);
-      slice_send_ipi_to_domain(dom_index, SLICE_IPI_SW_STOP);
+      slice_stop(dom_index);
       break;
     }
   }
@@ -90,8 +91,15 @@ static void slice_create_cli(size_t narg, const char **argv) {
   unsigned long image_from = strtoul(argv[3], 0, 16);
   unsigned long image_size = strtoul(argv[4], 0, 16);
   unsigned long fdt_from = strtoul(argv[5], 0, 16);
-  int err = slice_create(cpu_mask, mem_start, mem_size, image_from, image_size,
-                         fdt_from);
+  struct sbi_hartmask hartmask;
+  size_t cpu = 0;
+  for (; cpu_mask > 0; cpu++) {
+    if (cpu_mask & 1)
+      sbi_hartmask_set_hart(cpu, &hartmask);
+    cpu_mask <<= 1;
+  }
+  int err = slice_create(hartmask, mem_start, mem_size, image_from, image_size,
+                         fdt_from, PRV_S);
   if (err) {
     mHSS_FANCY_PRINTF(LOG_NORMAL, "slice_create returns err %d\n", err);
     ;
@@ -137,7 +145,7 @@ void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
     switch (keyIndex) {
     case SLICE_STOP: {
       if (dom_index > 0) {
-        slice_send_ipi_to_domain(dom_index, SLICE_IPI_SW_STOP);
+        slice_stop(dom_index);
       }
       break;
     }
@@ -159,11 +167,7 @@ void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
       break;
     }
     case SLICE_PMP: {
-      if (dom_index >= 0) {
-        slice_send_ipi_to_domain(dom_index, SLICE_IPI_PMP_DEBUG);
-      } else {
-        slice_pmp_dump();
-      }
+      slice_pmp_dump_by_index(dom_index);
       break;
     }
     default:

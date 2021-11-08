@@ -51,6 +51,7 @@
 #include <sbi/sbi_hartmask.h>
 #include <sbi/sbi_domain.h>
 #include <sbi/sbi_math.h>
+#include <slice/slice_mgr.h>
 #include <sbi_utils/fdt/fdt_fixup.h>
 #include <sbi_utils/irqchip/plic.h>
 #include <sbi_utils/serial/uart8250.h>
@@ -414,8 +415,8 @@ static int init_slice_shared_mem(struct sbi_domain_memregion * regions, unsigned
         return SBI_ERR_FAILED;
     }
     // Host memory. 
-    regions[count].base = HART_0_MEM_ADDR;
-    regions[count].order = HART_0_MEM_ORDER;
+    regions[count].base = CONFIG_SERVICE_BOOT_DDR_SLICE_0_MEM_START;
+    regions[count].order = CONFIG_SERVICE_BOOT_DDR_SLICE_0_MEM_ORDER;
     regions[count].flags = READ_ONLY;
     count++;
     if(count > DOMAIN_REGION_MAX_COUNT){
@@ -465,26 +466,9 @@ static int mpfs_domains_init(void)
 
                 // TODO: replace memcpy with something like strlcpy
                 memcpy(pDom->name, hart_table[boot_hartid].name, ARRAY_SIZE(dom_table[0].name) - 1);
-                struct sbi_hartmask *const pMask = &(hart_table[boot_hartid].hartMask);
-                pDom->next_arg1 = hart_table[boot_hartid].next_arg1;
-                pDom->next_addr = hart_table[boot_hartid].next_addr;
-                pDom->next_mode = hart_table[boot_hartid].next_mode;
-                pDom->system_reset_allowed = TRUE;
-                pDom->possible_harts = pMask;
-                pDom->slice_type = SLICE_TYPE_SLICE;
-                pDom->next_boot_src = hart_table[boot_hartid].next_boot_src;
-                pDom->next_boot_size = hart_table[boot_hartid].next_boot_size;
-                pDom->slice_mem_start = hart_table[boot_hartid].mem_start;
-                pDom->slice_mem_size = hart_table[boot_hartid].mem_size;
-                pDom->slice_type = SLICE_TYPE_SLICE;
-                pDom->slice_dt_src = (void *)hart_table[boot_hartid].slice_fdt_src;
-                init_slice_mem_regions(pDom);
-                result = sbi_domain_register(pDom, pMask);
-                if (result)
-                {
-                    sbi_printf("%s(): sbi_domain_register() failed for %s\n", __func__, pDom->name);
-                    break;
-                }
+                result = slice_create(hart_table[boot_hartid].hartMask, hart_table[boot_hartid].mem_start,
+                 hart_table[boot_hartid].mem_size, hart_table[boot_hartid].next_boot_src,
+                 hart_table[boot_hartid].next_boot_size, hart_table[boot_hartid].slice_fdt_src, hart_table[boot_hartid].next_mode);
             }
         }
         else

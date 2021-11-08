@@ -1,3 +1,27 @@
+config SERVICE_BOOT_DDR_SLICE_0_MEM_START
+        hex "Slice-0 Mem start"
+        default  0xa000000
+        help
+                This feature specifies the slice-0 mem start.
+
+config SERVICE_BOOT_DDR_SLICE_0_MEM_ORDER
+        hex "Slice-0 Mem size order"
+        default  28
+        help
+                This feature specifies the slice-0 mem order.
+
+config SERVICE_BOOT_DDR_SLICE_BUS_ADDR
+        hex "shared mem between slice-0 and slice-k"
+        default  0xa000000
+        help
+                This feature specifies the slice-0 mem bus.
+
+config SERVICE_BOOT_DDR_SLICE_BUS_SIZE
+        hex ""
+        default  0x1000
+        help
+                This feature specifies the slice-0 mem bus size.
+
 config SERVICE_BOOT
 	def_bool y
 	select SERVICE_OPENSBI
