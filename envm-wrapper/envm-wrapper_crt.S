@@ -82,10 +82,6 @@ _start:
 	csrw	CSR_MSCRATCH, 0
 
 .configure:
-	li	a0, 0
-	la	a1, decompress_done_flag
-	REG_S	a0, 0(a1)
-
 	la	s8, STACK_SIZE_PER_HART
         csrr	a0, CSR_MHARTID
 
@@ -114,6 +110,9 @@ _start:
 
 .e51_decompress:
 	call	config_l2_cache
+	li	a0, 0
+	la	a1, decompress_done_flag
+	REG_S	a0, 0(a1)
         call	.clear_dtim
         call	.clear_l2lim
         call	.clear_l2scratchpad
