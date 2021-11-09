@@ -32,7 +32,7 @@
 extern "C" {
 #endif
 
-#define HSS_UART_HELPER_MAX_GETLINE 80u
+#define HSS_UART_HELPER_MAX_GETLINE 100u
 
 int uart_putstring(int hartid, char *p);
 ssize_t uart_getline(char **pBuffer, size_t *pBufLen);

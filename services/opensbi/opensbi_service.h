@@ -55,10 +55,8 @@ void mpfs_domains_register_hart(int hartid, int boot_hartid);
 // run its own fw and call HSS_OpenSBI_DoBoot(hartid, false)
 void __noreturn HSS_OpenSBI_DoBoot(enum HSSHartId hartid, bool sbi_is_shared);
 #if IS_ENABLED(CONFIG_SLICE)
-void slice_register_boot_hart(int boot_hartid,
-                              unsigned long boot_src,
-                              size_t boot_size,
-                              unsigned long fdt_src);
+void slice_register_boot_hart(int boot_hartid, unsigned long boot_src,
+                              size_t boot_size, unsigned long fdt_src, const char * uart_path);
 // Returns the slice memory start for this hart;
 unsigned long slice_mem_start_this_hart(void);
 // Returns the slice memory size for this hart;

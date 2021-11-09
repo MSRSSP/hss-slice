@@ -10,8 +10,10 @@
 #include "sbi/sbi_domain.h"
 #include "sbi/sbi_hart.h"
 #include "sbi/sbi_hartmask.h"
+#include "slice/slice.h"
 #include "slice/slice_mgr.h"
 #include "slice/slice_pmp.h"
+#include "tinycli_helper.h"
 
 struct tinycli_key {
   const int tokenId;
@@ -80,26 +82,50 @@ static bool tinyCLI_NameToKeyIndex_(struct tinycli_key const *const keys,
 // slice create 0x10 0x1000000000 0x20000000 0xa00026f0 0x16e7400 0xa16f7af0
 // slice create 0x6 0x80000000 0x20000000 0xa00106f0 0x16e7400 0xa16f7af0
 #define PRV_S 1
+static void slice_create_cli_help(void) {
+  mHSS_FANCY_PRINTF(LOG_NORMAL, "Please use options arguments "
+                                "-c cpu_mask -m mem_start -s mem_size "
+                                "-i image_from -z image_size -f fdt_from\n");
+}
 static void slice_create_cli(size_t narg, const char **argv) {
-  if (narg < 6) {
-    mHSS_FANCY_PRINTF(LOG_NORMAL, "Please use 6 arguments cpu_mask mem_start "
-                                  "mem_size image_from image_size fdt_from\n");
-    return;
-  }
-  unsigned long cpu_mask = strtoul(argv[0], 0, 16);
-  unsigned long mem_start = strtoul(argv[1], 0, 16);
-  unsigned long mem_size = strtoul(argv[2], 0, 16);
-  unsigned long image_from = strtoul(argv[3], 0, 16);
-  unsigned long image_size = strtoul(argv[4], 0, 16);
-  unsigned long fdt_from = strtoul(argv[5], 0, 16);
-  struct sbi_hartmask hartmask;
-  sbi_hartmask_clear_all(&hartmask);
-  hartmask.bits[0] = (unsigned)cpu_mask;
-  int err = slice_create(hartmask, mem_start, mem_size, image_from, image_size,
-                         fdt_from, PRV_S);
+  struct slice_options options = {0};
+  options.fdt_from = 0xa36e7af0;
+  options.image_from = 0xa20006f0;
+  options.image_size = 0x16e7400;
+  options.guest_mode = PRV_S;
+  int opt;
+  optind = 1;
+  while ((opt = getopt(narg, (char **)argv, "c:m:s:i:z:f:u:h")) != -1)
+    switch (opt) {
+    case 'c':
+      options.hartmask.bits[0] = strtoul(optarg, NULL, 16);
+      break;
+    case 'm':
+      options.mem_start = strtoul(optarg, 0, 16);
+      break;
+    case 's':
+      options.mem_size = strtoul(optarg, 0, 16);
+      break;
+    case 'i':
+      options.image_from = strtoul(optarg, 0, 16);
+      break;
+    case 'z':
+      options.image_size = strtoul(optarg, 0, 16);
+      break;
+    case 'f':
+      options.fdt_from = strtoul(optarg, 0, 16);
+      break;
+    case 'u':
+      memcpy(&(options.stdout[0]), optarg, 32);
+      break;
+    default:
+      slice_create_cli_help();
+      break;
+    }
+  int err = slice_create_full(&options);
   if (err) {
     mHSS_FANCY_PRINTF(LOG_NORMAL, "slice_create returns err %d\n", err);
-    ;
+    slice_create_cli_help();
   }
 }
 
@@ -129,19 +155,31 @@ void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
       {SLICE_CREATE, "CREATE", "create a slice."},
       {SLICE_DELETE, "DELETE", "delete a slice."},
       {SLICE_DUMP, "DUMP", "dump slice info."},
-      {SLICE_HW_RESET, "HW_RESET",
+      {SLICE_HW_RESET, "RESET",
        "reset a slice via per-core reset unit (Only work in QEMU)."},
       {SLICE_PMP, "PMP", "dump pmp info."},
       {SLICE_HELP, "help", "slice help."},
   };
   int dom_index = -1;
   unsigned int base_arg_idx = 0;
-  if (narg > 1) {
-    dom_index = strtoul(argv_tokenArray[base_arg_idx + 1], 0, 10);
-  }
+
   if (narg > 0 &&
       tinyCLI_NameToKeyIndex_(debugKeys, ARRAY_SIZE(debugKeys),
                               argv_tokenArray[base_arg_idx], &keyIndex)) {
+    switch (keyIndex) {
+    case SLICE_STOP:
+    case SLICE_DELETE:
+    case SLICE_DUMP:
+    case SLICE_HW_RESET:
+    case SLICE_PMP:
+    case SLICE_START:
+      if (narg > 1) {
+        dom_index = strtoul(argv_tokenArray[base_arg_idx + 1], 0, 10);
+      }
+      break;
+    default:
+      break;
+    }
     switch (keyIndex) {
     case SLICE_STOP: {
       if (dom_index > 0) {
@@ -158,8 +196,7 @@ void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
       break;
     }
     case SLICE_CREATE: {
-      slice_create_cli(narg - 1,
-                       (const char **)&argv_tokenArray[base_arg_idx + 1]);
+      slice_create_cli(narg, (const char **)&argv_tokenArray[base_arg_idx]);
       break;
     }
     case SLICE_DUMP: {

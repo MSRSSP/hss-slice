@@ -36,6 +36,8 @@
 #  include "sbi_scratch.h"
 #  include "sbi_types.h"
 #  include "sbi_platform.h"
+#  include "slice/slice_pmp.h"
+
 #else
 #  ifdef __riscv
 #    include <machine/mtrap.h>
@@ -621,7 +623,7 @@ static void boot_download_chunks_onExit(struct StateMachine *const pMyMachine)
     slice_register_boot_hart(target,
                              pInstanceData->bootImage_src,
                              pInstanceData->bootImage_size,
-                             pInstanceData->ancilliaryData);
+                             pInstanceData->ancilliaryData, "");
 #endif
 }
 
@@ -755,7 +757,7 @@ static void boot_wait_handler(struct StateMachine * const pMyMachine)
 {
     struct HSS_Boot_LocalData * const pInstanceData = pMyMachine->pInstanceData;
     enum HSSHartId const target = pInstanceData->target;
-
+    slice0_setup_pmp();
     if (!pBootImage->hart[target-1].entryPoint) {
         // nothing for me to do, not expecting GOTO ack...
         pMyMachine->state = BOOT_IDLE;

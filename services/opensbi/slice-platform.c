@@ -259,9 +259,11 @@ struct hart_info {
   u64 next_boot_src;
   size_t next_boot_size;
   unsigned long slice_fdt_src;
+  char uart_path[SLICE_UART_PATH_LEN];
 };
 
-static struct hart_info * hart_table = (struct hart_info *)CONFIG_SERVICE_BOOT_DDR_SLICE_PRIVATE_START;
+static struct hart_info *hart_table =
+    (struct hart_info *)CONFIG_SERVICE_BOOT_DDR_SLICE_PRIVATE_START;
 void mpfs_domains_register_hart(int hartid, int boot_hartid) {
   hart_table[hartid].owner_hartid = boot_hartid;
   hart_table[hartid].boot_pending = 1;
@@ -289,14 +291,19 @@ bool mpfs_is_last_hart_booting(void) {
 }
 
 void slice_register_boot_hart(int boot_hartid, unsigned long boot_src,
-                              size_t boot_size, unsigned long fdt_src) {
+                              size_t boot_size, unsigned long fdt_src,
+                              const char *uart_path) {
   hart_table[boot_hartid].next_boot_src = boot_src;
   hart_table[boot_hartid].next_boot_size = boot_size;
   hart_table[boot_hartid].slice_fdt_src = fdt_src;
+  int len = array_size(hart_table[boot_hartid].uart_path) - 1;
+  len = strlen(uart_path) > len ? len : strlen(uart_path);
+  memcpy(hart_table[boot_hartid].uart_path, uart_path, len);
 }
 
 static int slice_unregister_hart(unsigned hartid) {
-  sbi_printf("%s: hartid = %d size=%ld\n", __func__, hartid, sizeof(hart_table[hartid]));
+  sbi_printf("%s: hartid = %d size=%ld\n", __func__, hartid,
+             sizeof(hart_table[hartid]));
   hart_table[hartid].owner_hartid = 0;
   hart_table[hartid].mem_size = 0;
   hart_table[hartid].hartMask.bits[0] = 0;
@@ -378,13 +385,13 @@ static int init_slice_shared_mem(struct sbi_domain_memregion *regions,
     return SBI_ERR_FAILED;
   }
   // PLIC
-  regions[count].base = MPFS_PLIC_ADDR;
+  /*regions[count].base = MPFS_PLIC_ADDR;
   regions[count].order = 30;
   regions[count].flags = ALL_PERM_BUT_X;
   count++;
   if (count > DOMAIN_REGION_MAX_COUNT) {
     return SBI_ERR_FAILED;
-  }
+  }*/
   // PLIC
   regions[count].base = 0x2008000000;
   regions[count].order = 27;
@@ -394,13 +401,13 @@ static int init_slice_shared_mem(struct sbi_domain_memregion *regions,
     return SBI_ERR_FAILED;
   }
   // Host memory.
-  regions[count].base = CONFIG_SERVICE_BOOT_DDR_SLICE_0_MEM_START;
+  /*regions[count].base = CONFIG_SERVICE_BOOT_DDR_SLICE_0_MEM_START;
   regions[count].order = CONFIG_SERVICE_BOOT_DDR_SLICE_0_MEM_ORDER;
   regions[count].flags = READ_ONLY;
   count++;
   if (count > DOMAIN_REGION_MAX_COUNT) {
     return SBI_ERR_FAILED;
-  }
+  }*/
   *out_count = count;
   return 0;
 }
@@ -445,13 +452,17 @@ static int mpfs_domains_init(void) {
         // TODO: replace memcpy with something like strlcpy
         memcpy(pDom->name, hart_table[boot_hartid].name,
                ARRAY_SIZE(dom_table[0].name) - 1);
-        result = slice_create(hart_table[boot_hartid].hartMask,
-                              hart_table[boot_hartid].mem_start,
-                              hart_table[boot_hartid].mem_size,
-                              hart_table[boot_hartid].next_boot_src,
-                              hart_table[boot_hartid].next_boot_size,
-                              hart_table[boot_hartid].slice_fdt_src,
-                              hart_table[boot_hartid].next_mode);
+        struct slice_options options = {hart_table[boot_hartid].hartMask,
+                                        hart_table[boot_hartid].mem_start,
+                                        hart_table[boot_hartid].mem_size,
+                                        hart_table[boot_hartid].next_boot_src,
+                                        hart_table[boot_hartid].next_boot_size,
+                                        hart_table[boot_hartid].slice_fdt_src,
+                                        hart_table[boot_hartid].next_mode,
+                                        {0}};
+        memcpy(options.stdout, hart_table[boot_hartid].uart_path,
+               strlen(hart_table[boot_hartid].uart_path));
+        result = slice_create_full(&options);
       }
     } else {
       sbi_printf("%s(): boot_hart_id not set\n", __func__);

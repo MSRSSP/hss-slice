@@ -33,6 +33,7 @@ SRCS-$(CONFIG_SERVICE_TINYCLI) += \
 
 ifeq ($(BOARD),slice)
 	SRCS-$(CONFIG_SERVICE_TINYCLI) += services/tinycli/tinycli_slice.c
+	SRCS-$(CONFIG_SERVICE_TINYCLI) += services/tinycli/tinycli_helper.c
 endif
 
 INCLUDES +=\
