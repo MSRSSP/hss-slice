@@ -298,6 +298,7 @@ void slice_register_boot_hart(int boot_hartid, unsigned long boot_src,
   hart_table[boot_hartid].slice_fdt_src = fdt_src;
   int len = array_size(hart_table[boot_hartid].uart_path) - 1;
   len = strlen(uart_path) > len ? len : strlen(uart_path);
+  memset(hart_table[boot_hartid].uart_path, 0, SLICE_UART_PATH_LEN);
   memcpy(hart_table[boot_hartid].uart_path, uart_path, len);
 }
 
@@ -422,10 +423,6 @@ int init_slice_mem_regions(struct sbi_domain *pDom) {
   sbi_domain_memregion_init(
       pScratch->fw_start & ~((1UL << log2roundup(pScratch->fw_size)) - 1UL),
       1 << log2roundup(pScratch->fw_size), 0, &pDom->regions[count++]);
-  sbi_printf(
-      "hartid =%d: fw init %lx %lx in dom %s\n", current_hartid(),
-      pScratch->fw_start & ~((1UL << log2roundup(pScratch->fw_size)) - 1UL),
-      log2roundup(pScratch->fw_size), pDom->name);
   init_slice_shared_mem(pDom->regions, count, &count);
   sbi_domain_memregion_init(pDom->next_addr & (~((1UL << 28) - 1)),
                             pDom->slice_mem_size, ALL_PERM,
