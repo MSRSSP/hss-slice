@@ -5,8 +5,13 @@
 *.hex
 *.map
 *.sym
-
+*.swp
+*.dtb
+Default-qemu/
+Default
 .config
 .config.old
 config.h
 include/tool_versions.h
+thirdparty/Kconfiglib/__pycache__
+boards/*/fpga_design_config/

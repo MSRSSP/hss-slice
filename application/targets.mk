@@ -80,7 +80,7 @@ config.h: .config
 	@$(ECHO) " GENCONFIG"
 	$(PYTHON) $(GENCONFIG)
 
-genconfig: config.h
+genconfig: config.h slice_fw_dynamic
 
 ##############################################################################
 #

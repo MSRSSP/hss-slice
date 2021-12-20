@@ -101,9 +101,11 @@ L2LIM_SLICE_DEP += thirdparty/opensbi/$(SBI_BUILD_DIR)/platform/slice/firmware/s
 
 thirdparty/opensbi/$(SBI_BUILD_DIR)/platform/slice/firmware/slice_fw_dynamic.bin: slice_fw_dynamic
 
+
 slice_fw_dynamic: config.h
 	make -C thirdparty/opensbi/ CROSS_COMPILE=$(CROSS_COMPILE) PLATFORM="slice" SLICE_HSS_DIR=$(shell pwd) FW_PIC=y -j16 O=$(SBI_BUILD_DIR)
 
+application/crt.o: slice_fw_dynamic
 
 thirdparty/opensbi/$(SBI_BUILD_DIR)/lib/libsbi.a: libsbi
 libsbi:

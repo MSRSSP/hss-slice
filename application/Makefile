@@ -46,7 +46,6 @@ EXTRA_SRCS-y += \
     application/hart0/hss_init.c \
     application/hart0/hss_main.c
 
-application/crt.S: thirdparty/opensbi/build/platform/slice/firmware/slice_fw_dynamic.bin
 application/hart0/hss_main.o: CFLAGS=$(CFLAGS_GCCEXT)
 application/hart0/hss_init.o: CFLAGS=$(CFLAGS_GCCEXT)
 application/hart0/hss_init.o: include/tool_versions.h
