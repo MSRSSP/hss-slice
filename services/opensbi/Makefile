@@ -78,6 +78,7 @@ libsbi-objs-y += sbi_timer.o
 #libsbi-objs-y += sbi_expected_trap.o
 libslice-objs-y += slice_loader_start.o
 libslice-objs-y += slice.o
+libslice-objs-y += slice_smp.o
 libslice-objs-y += slice_pmp.o
 libslice-objs-y += slice_mgr.o
 libslice-objs-y += slice_reset.o
