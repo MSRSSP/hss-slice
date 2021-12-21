@@ -256,9 +256,6 @@ void __noreturn HSS_OpenSBI_DoBoot(enum HSSHartId hartid, int sbi_is_shared)
             mpfs_mark_hart_as_booted(hartid);
             slice_loader(sbi_domain_thishart_ptr(), fsbl_store_addr, fsbl_size);
         }
-    }else{
-        sbi_printf("%s: nonslice_sbi_init\n", __func__);
-        nonslice_sbi_init();
     }
 
     while (1) {
