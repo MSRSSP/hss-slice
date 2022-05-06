@@ -163,6 +163,8 @@ extern unsigned long _trap_handler;
 #include "sbi/sbi_domain.h"
 #include "sbi/sbi_ecall_interface.h"
 
+int sbi_console_init(struct sbi_scratch *scratch);
+
 void HSS_OpenSBI_Setup(void)
 {
     enum HSSHartId hartid = current_hartid();
@@ -175,26 +177,56 @@ void HSS_OpenSBI_Setup(void)
 
         opensbi_scratch_setup(hartid);
 
-        int sbi_console_init(struct sbi_scratch *scratch);
-	int rc = sbi_console_init(&(pScratches[hartid].scratch));
-	if (rc)
-		sbi_hart_hang();
-    } else {
-        ;
-    }
+        int rc = sbi_console_init(&(pScratches[hartid].scratch));
+        if (rc)
+            sbi_hart_hang();
+        } else {
+            ;
+        }
 }
 
-void __noreturn HSS_OpenSBI_DoBoot(enum HSSHartId hartid);
-void __noreturn HSS_OpenSBI_DoBoot(enum HSSHartId hartid)
+int relocate_sbi(unsigned long slice_fw_start, u32 hartid){
+    /*Reset relocation status.*/
+    extern unsigned long _relocate_lottery;
+    extern unsigned long _relocate_status;
+    _relocate_lottery = 0;
+    _relocate_status = 0;
+    unsigned long slice_fw_size;
+    slice_fw_size =  0x200000;
+    memcpy((void*)slice_fw_start, (void*)pScratches[hartid].scratch.fw_start, slice_fw_size);
+    return slice_fw_size;
+}
+
+void __noreturn HSS_OpenSBI_DoBoot(enum HSSHartId hartid, bool sbi_is_shared)
 {
     uint32_t mstatus_val = mHSS_CSR_READ(CSR_MSTATUS);
     mstatus_val = EXTRACT_FIELD(mstatus_val, MSTATUS_MPIE);
     mHSS_CSR_WRITE(CSR_MSTATUS, mstatus_val);
     mHSS_CSR_WRITE(CSR_MIE, 0u);
-
     opensbi_scratch_setup(hartid);
-    mpfs_mark_hart_as_booted(hartid);
-    sbi_init(&(pScratches[hartid].scratch));
+    int rc = sbi_console_init(&(pScratches[hartid].scratch));
+    if (rc){
+        sbi_hart_hang();
+    }
+    unsigned long slice_fw_start = slice_mem_start_this_hart();
+    if(slice_fw_start && sbi_is_shared){
+        if(slice_is_owner_hart()){
+            unsigned long slice_fw_size = relocate_sbi(slice_fw_start, hartid);
+            if(!slice_fw_size){
+                sbi_hart_hang();
+            }
+            mpfs_mark_hart_as_booted(hartid);
+            slice_to_sbi((void*)slice_fw_start, (void*)0, 0); 
+        }else{
+            while(!is_slice_sbi_copy_done()){
+            }
+            mpfs_mark_hart_as_booted(hartid);
+            slice_to_sbi((void*)slice_fw_start, (void*)0, 0);
+        }
+    }else{
+        sbi_printf("%s: hart %d: sbi_init.\n", __func__, current_hartid());
+        sbi_init(&(pScratches[hartid].scratch));
+    }
 
     while (1) {
         asm("wfi");
@@ -265,7 +297,7 @@ enum IPIStatusCode HSS_OpenSBI_IPIHandler(TxId_t transaction_id, enum HSSHartId 
             if(p_ancilliary_buffer_in_ddr){
                 pScratches[hartid].scratch.next_arg1 = (uintptr_t)p_ancilliary_buffer_in_ddr;
             }
-            HSS_OpenSBI_DoBoot(hartid);
+            HSS_OpenSBI_DoBoot(hartid, 1);
         }
     }
 

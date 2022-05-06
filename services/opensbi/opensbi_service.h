@@ -48,11 +48,23 @@ void HSS_OpenSBI_Setup(void);
 void HSS_OpenSBI_Reboot(void);
 
 void mpfs_domains_register_hart(int hartid, int boot_hartid);
+
+// HSS_OpenSBI_DoBoot is called in twice per hart:
+// 1. monitor hart sends IPI to tell hart 1-4 to start HSS_OpenSBI_DoBoot(hartid, True)
+// 2. If the hart is in slice mode, it copies the next-stage fw into slice memory and 
+// run its own fw and call HSS_OpenSBI_DoBoot(hartid, false)
+void __noreturn HSS_OpenSBI_DoBoot(enum HSSHartId hartid, bool sbi_is_shared);
 #if IS_ENABLED(CONFIG_SLICE)
 void slice_register_boot_hart(int boot_hartid,
                               unsigned long boot_src,
                               size_t boot_size,
                               unsigned long fdt_src);
+// Returns the slice memory start for this hart;
+unsigned long slice_mem_start_this_hart(void);
+// Return True if the slice's owner hart already copied the hss-l2 to slice memory;
+bool is_slice_sbi_copy_done(void);
+// Return True if this hart is the slice's owner hart;
+bool slice_is_owner_hart(void);
 #endif
 
 void mpfs_domains_deregister_hart(int hartid);
