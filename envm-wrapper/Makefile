@@ -50,7 +50,6 @@ LINKER_SCRIPT-envm-wrapper = envm-wrapper/envm-wrapper.ld
 COMPRESSED_TARGET=$(BINDIR)/$(TARGET-l2scratch:.elf=.bin.deflate)
 
 COMPRESSED_TARGETS += $(COMPRESSED_TARGET)
-COMPRESSED_TARGETS += thirdparty/opensbi/build/platform/slice/firmware/slice_fw_dynamic.bin.deflate
 envm-wrapper/envm-wrapper_crt.o: envm-wrapper/envm-wrapper_crt.S $(COMPRESSED_TARGET)
 envm-wrapper/envm-wrapper_stubs.o: CFLAGS=$(CFLAGS_GCCEXT)
 envm-wrapper/envm-wrapper_stubs.o: envm-wrapper/envm-wrapper_stubs.c

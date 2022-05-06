@@ -29,12 +29,9 @@
 SRCS-$(CONFIG_SERVICE_OPENSBI) += \
 	services/opensbi/opensbi_service.c \
 
-LIBS+=thirdparty/opensbi/build/lib/libsbi.a
-LIBS+=thirdparty/opensbi/build/lib/libsbiutils.a
 
 SRCS-$(CONFIG_SERVICE_OPENSBI_IHC) += \
 	services/opensbi/opensbi_ihc_ecall.c \
-thirdparty/opensbi/build/lib/libsbi.a: libsbi
 
 ifeq ($(ENV), QEMU)
 SBI_PLATFORM_CFLAGS = -DCONFIG_QEMU=1 -DCONFIG_SLICE_SW_RESET=0
@@ -43,6 +40,8 @@ else
 SBI_PLATFORM_CFLAGS = -DCONFIG_SLICE_SW_RESET=1
 SBI_BUILD_DIR = build
 endif
+
+
 libsbi-objs-y += riscv_asm.o
 libsbi-objs-y += riscv_atomic.o
 libsbi-objs-y += riscv_hardfp.o
@@ -98,11 +97,18 @@ LIBS += $(foreach obj,$(fdt-objs),thirdparty/opensbi/$(SBI_BUILD_DIR)/$(obj))
 #LIBS+=thirdparty/opensbi/$(SBI_BUILD_DIR)/lib/libsbi.a
 #LIBS+=thirdparty/opensbi/$(SBI_BUILD_DIR)/lib/libsbiutils.a
 
+L2LIM_SLICE_DEP += thirdparty/opensbi/$(SBI_BUILD_DIR)/platform/slice/firmware/slice_fw_dynamic.bin
+
+thirdparty/opensbi/$(SBI_BUILD_DIR)/platform/slice/firmware/slice_fw_dynamic.bin: slice_fw_dynamic
+
+slice_fw_dynamic: config.h
+	make -C thirdparty/opensbi/ CROSS_COMPILE=$(CROSS_COMPILE) PLATFORM="slice" SLICE_HSS_DIR=$(shell pwd) FW_PIC=y -j16 O=$(SBI_BUILD_DIR)
+
 
 thirdparty/opensbi/$(SBI_BUILD_DIR)/lib/libsbi.a: libsbi
 libsbi:
 	@echo "make -C thirdparty/opensbi/ CROSS_COMPILE=$(CROSS_COMPILE) platform-cppflags-y=\"$(SBI_PLATFORM_CFLAGS)\" PLATFORM="generic" install_libsbi"
-	make -C thirdparty/opensbi/ O=${SBI_BUILD_DIR} CROSS_COMPILE=$(CROSS_COMPILE) platform-cppflags-y="$(SBI_PLATFORM_CFLAGS)" PLATFORM="generic" install_libsbi
+	make -C thirdparty/opensbi/ O=${SBI_BUILD_DIR} CROSS_COMPILE=$(CROSS_COMPILE) platform-cppflags-y="$(SBI_PLATFORM_CFLAGS)" PLATFORM="slice" 
 
 thirdparty/opensbi/$(SBI_BUILD_DIR)/lib/libsbiutils.a: libsbiutils
 
@@ -116,8 +122,13 @@ ASM_SRCS-$(CONFIG_SERVICE_OPENSBI) += \
 	thirdparty/opensbi/lib/sbi/sbi_hfence.S \
 
 ifdef CONFIG_SLICE
-SRCS-$(CONFIG_SERVICE_OPENSBI) += \
-	services/opensbi/slice-platform.c
+#SRCS-$(CONFIG_SERVICE_OPENSBI) += 
+#	thirdparty/opensbi/build/platform/slice/platform.o
+libslice-objs-y += ../../platform/slice/platform.o
+libslice-objs-y += ../../platform/slice/slice_uart_helper.o
+SRCS-$(CONFIG_SERVICE_OPENSBI)  += thirdparty/opensbi/platform/slice/slice_cache.c
+
+#services/opensbi/slice-platform.c
 else
 SRCS-$(CONFIG_SERVICE_OPENSBI) += \
 	services/opensbi/platform.c
