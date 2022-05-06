@@ -350,7 +350,9 @@ static void boot_setup_pmp_onEntry(struct StateMachine * const pMyMachine)
         if (primary_boot_hart) {
             if (pBootImage->hart[peer-1].flags & BOOT_FLAG_SKIP_OPENSBI) {
                 // skipping OpenSBI => don't register as a hart
+                #if !CONFIG_SLICE
                 mpfs_domains_deregister_hart(peer);
+                #endif
             } else if ((peer == target) ||
                 (pBootImage->hart[peer-1].entryPoint == pBootImage->hart[target-1].entryPoint)) {
                 pInstanceData->hartMask |= (1u << peer);
