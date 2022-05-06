@@ -28,6 +28,12 @@ config SERVICE_BOOT_DDR_SLICE_PRIVATE_START
         help
                 This feature specifies the slice_cfg only accessible to slice-0.
 
+config SERVICE_BOOT_DDR_SLICE_FW_START
+        hex "private location for opensbi copy"
+        default  0xa002000
+        help
+                This feature specifies the private location for opensbi and the end of allocatable private mem for slice-0.
+
 config SERVICE_BOOT_DDR_TARGET_ADDR
 	hex "Target Base address for BOOT to DDR copy"
 	default 0xA2000000

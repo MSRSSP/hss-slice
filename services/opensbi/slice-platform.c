@@ -365,9 +365,8 @@ unsigned long slice_mem_size_this_hart(void) {
   return hart_table[owner].mem_size;
 }
 
-bool slice_is_owner_hart(void) {
-  int hartid = current_hartid();
-  return hartid == hart_table[hartid].owner_hartid;
+unsigned slice_owner_hart(unsigned hartid) {
+  return hart_table[hartid].owner_hartid;
 }
 
 bool is_slice_sbi_copy_done(void) {
@@ -503,6 +502,7 @@ static int mpfs_domains_init(void) {
                                         hart_table[boot_hartid].slice_fdt_src,
                                         hart_table[boot_hartid].next_mode,
                                         {0}};
+        hart_table[boot_hartid].uart_path[SLICE_UART_PATH_LEN -1] = 0;
         memcpy(options.stdout, hart_table[boot_hartid].uart_path,
                strlen(hart_table[boot_hartid].uart_path));
         result = slice_create_full(&options);

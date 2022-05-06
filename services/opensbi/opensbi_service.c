@@ -67,33 +67,35 @@ static unsigned long l_hartid_to_scratch(int hartid);
 union t_HSS_scratchBuffer {
     struct sbi_scratch scratch;
     unsigned long buffer[SBI_SCRATCH_SIZE / __SIZEOF_POINTER__];
-#if IS_ENABLED(CONFIG_QEMU)
 } scratches[MAX_NUM_HARTS];
-#else
-} scratches[MAX_NUM_HARTS] __attribute__((section(".l2_scratchpad"),used));
-//} scratches[MAX_NUM_HARTS] __attribute__((section(".opensbi_scratch")));
 
+union t_HSS_scratchBuffer  system_scratches[MAX_NUM_HARTS] __attribute__((section(".l2_scratchpad"), used));
+//} scratches[MAX_NUM_HARTS] __attribute__((section(".opensbi_scratch")));
 asm(".align 3\n"
 	"scratch_addr: .quad scratches\n");
-#endif
+
 extern const size_t scratch_addr;
 union t_HSS_scratchBuffer *pScratches = 0;
 
-extern unsigned long _hss_start, _hss_end;
-static void opensbi_scratch_setup(enum HSSHartId hartid)
+extern unsigned long _slice_fw_start, _slice_fw_end;
+static void opensbi_scratch_setup(bool is_system, enum HSSHartId hartid)
 {
     assert(hartid < MAX_NUM_HARTS);
+    if(is_system){
+        pScratches = (union t_HSS_scratchBuffer * const)system_scratches;
+    }else{
+        pScratches = (union t_HSS_scratchBuffer * const)scratches;
+    }
     #if IS_ENABLED(CONFIG_QEMU)
     pScratches = (union t_HSS_scratchBuffer * const)scratches;
-    #else
-    pScratches = (union t_HSS_scratchBuffer * const)scratch_addr;
     #endif
     pScratches[hartid].scratch.options = SBI_SCRATCH_DEBUG_PRINTS;
     pScratches[hartid].scratch.hartid_to_scratch = (unsigned long)l_hartid_to_scratch;
     pScratches[hartid].scratch.platform_addr = (unsigned long)&platform;
 
-    pScratches[hartid].scratch.fw_start = (unsigned long)&_hss_start;
-    pScratches[hartid].scratch.fw_size = (unsigned long)&_hss_end - (unsigned long)&_hss_start;
+    pScratches[hartid].scratch.fw_start = (unsigned long)&_slice_fw_start;
+    pScratches[hartid].scratch.fw_size = (unsigned long)&_slice_fw_end - (unsigned long)&_slice_fw_start;
+    //(unsigned long)&_slice_fw_end - (unsigned long)&_slice_fw_start;
 }
 
 static unsigned long l_hartid_to_scratch(int hartid)
@@ -181,7 +183,7 @@ void HSS_OpenSBI_Setup(void)
         mHSS_CSR_WRITE(CSR_MSTATUS, mstatus_val);
         mHSS_CSR_WRITE(CSR_MIE, 0u);
         d_reset_init(RESET_BASE_ADDR);
-        opensbi_scratch_setup(hartid);
+        opensbi_scratch_setup(true, hartid);
         sbi_platform_ops(&platform)->irqchip_init(true);
         int rc = sbi_console_init(&(pScratches[hartid].scratch));
         //sbi_platform_domains_init(&platform);
@@ -194,73 +196,66 @@ void HSS_OpenSBI_Setup(void)
 
 #define SLICE_FW_COPY_OFFSET 0x1000000
 
-int relocate_sbi(unsigned long slice_fw_start, unsigned long fw_from, u32 hartid){
-    /*Reset relocation status.*/
-    extern unsigned long _relocate_lottery;
-    extern unsigned long _relocate_status;
-    unsigned long slice_fw_size;
-    unsigned long* new_relocate_lottery_ptr;
-    unsigned long* new_relocate_status_ptr;
-    long long offset=0;
-    slice_fw_size =  0x200000;
-    memcpy((void*)slice_fw_start, (void*)fw_from, slice_fw_size);
-    offset = (long long)slice_fw_start - (long long)&_hss_start;
-    new_relocate_lottery_ptr = (unsigned long *)(offset + (long long)&_relocate_lottery);
-    new_relocate_status_ptr = (unsigned long *)(offset + (long long)&_relocate_status);
-    *new_relocate_lottery_ptr = 0UL;
-    *new_relocate_status_ptr = 0UL;
-    return slice_fw_size;
+void sbi_exit(struct sbi_scratch *scratch){
 }
 
 static atomic_t host_init_domain = ATOMIC_INITIALIZER(0);
 static atomic_t host_init_complete = ATOMIC_INITIALIZER(0);
-void __noreturn HSS_OpenSBI_DoBoot(enum HSSHartId hartid, bool sbi_is_shared)
+void __noreturn HSS_OpenSBI_DoBoot(enum HSSHartId hartid, int sbi_is_shared)
 {
-    static unsigned long fsbl_addr = (unsigned long)&_hss_start;
+    static unsigned long fsbl_addr = (unsigned long)&_slice_fw_start;
+    static unsigned long fsbl_store_addr = (unsigned long)&_slice_fw_start + SLICE_FW_COPY_OFFSET;
+    unsigned long fsbl_size = (unsigned long)&_slice_fw_end - (unsigned long)&_slice_fw_start;
+    // (unsigned long)&_slice_fw_end - (unsigned long)&_slice_fw_start;
+    #ifdef CONFIG_SERVICE_BOOT_DDR_SLICE_FW_START
+        fsbl_store_addr =  CONFIG_SERVICE_BOOT_DDR_SLICE_FW_START;
+    #endif
     uint32_t mstatus_val = mHSS_CSR_READ(CSR_MSTATUS);
     mstatus_val = EXTRACT_FIELD(mstatus_val, MSTATUS_MPIE);
     mHSS_CSR_WRITE(CSR_MSTATUS, mstatus_val);
     mHSS_CSR_WRITE(CSR_MIE, 0u);
-    opensbi_scratch_setup(hartid);
+    opensbi_scratch_setup(sbi_is_shared, hartid);
     int rc = sbi_console_init(&(pScratches[hartid].scratch));
     if (rc){
         sbi_hart_hang();
     }
     unsigned long slice_fw_start = slice_mem_start_this_hart();
+    enum HSSHartId primary_hartid = slice_owner_hart(hartid);
+    bool is_slice = (slice_mem_size_this_hart() != -1UL);
+    if(!is_slice && !sbi_is_shared){
+        sbi_printf("Bare-metal boot.========\n");
+        mpfs_mark_hart_as_booted(hartid); 
+        slice_loader(sbi_domain_thishart_ptr(), fsbl_store_addr, fsbl_size);
+    }
     if(slice_fw_start && sbi_is_shared){
-        if(slice_is_owner_hart()){
+        if(hartid == primary_hartid){
+            // System-wide initialization
+            // TBD: Move to hart0 service
             init_slice_sbi_copy_status();
             if(atomic_add_return(&host_init_domain, 1)==1){
-                sbi_printf("%s: relocate_sbi 0 to %lx from %lx.\n", __func__, fsbl_addr + SLICE_FW_COPY_OFFSET, fsbl_addr);
-				relocate_sbi(fsbl_addr + SLICE_FW_COPY_OFFSET, fsbl_addr, hartid);
+                memcpy((void*)fsbl_store_addr, (void*)fsbl_addr, fsbl_size);
                 sbi_domain_init(&pScratches[0].scratch, 0);
+                sbi_printf("sbi_domain_init done\n");
                 sbi_platform_domains_init(&platform);
                 sbi_ipi_init(&pScratches[0].scratch, TRUE);
                 if(atomic_add_return(&host_init_complete, 1)!=1){
                     sbi_printf("%s: should not reach here.\n", __func__);
                     wfi();
                 }
+                sbi_printf("atomic_add_return done\n");
+
 			}
             while(atomic_read(&host_init_complete)==0){
             }
-            sbi_printf("%s: clear mem %lx, %lx.\n", __func__, slice_mem_start_this_hart(), slice_mem_size_this_hart());
-            memset((void*)slice_mem_start_this_hart(), 0, slice_mem_size_this_hart());
-            sbi_printf("%s: relocate_sbi to %lx from %lx.\n", __func__, slice_fw_start, fsbl_addr + SLICE_FW_COPY_OFFSET);
-            unsigned long slice_fw_size = relocate_sbi(slice_fw_start, fsbl_addr + SLICE_FW_COPY_OFFSET, hartid);
-            if(!slice_fw_size){
-                sbi_hart_hang();
-            }
+            sbi_printf("before slice_loader\n");
             mpfs_mark_hart_as_booted(hartid);
-            slice_to_sbi((void*)slice_fw_start, (void*)0, 0); 
+            slice_loader(sbi_domain_thishart_ptr(), fsbl_store_addr, fsbl_size);
         }else{
             while(!is_slice_sbi_copy_done()){
             }
             mpfs_mark_hart_as_booted(hartid);
-            slice_to_sbi((void*)slice_fw_start, (void*)0, 0);
+            slice_loader(sbi_domain_thishart_ptr(), fsbl_store_addr, fsbl_size);
         }
-    }else if (slice_fw_start){
-        sbi_printf("%s: sbi_init\n", __func__);
-        sbi_init(&(pScratches[hartid].scratch));
     }else{
         sbi_printf("%s: nonslice_sbi_init\n", __func__);
         nonslice_sbi_init();

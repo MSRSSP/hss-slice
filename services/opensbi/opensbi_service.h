@@ -53,7 +53,7 @@ void mpfs_domains_register_hart(int hartid, int boot_hartid);
 // 1. monitor hart sends IPI to tell hart 1-4 to start HSS_OpenSBI_DoBoot(hartid, True)
 // 2. If the hart is in slice mode, it copies the next-stage fw into slice memory and 
 // run its own fw and call HSS_OpenSBI_DoBoot(hartid, false)
-void __noreturn HSS_OpenSBI_DoBoot(enum HSSHartId hartid, bool sbi_is_shared);
+void __noreturn HSS_OpenSBI_DoBoot(enum HSSHartId hartid, int sbi_is_shared);
 #if IS_ENABLED(CONFIG_SLICE)
 void slice_register_boot_hart(int boot_hartid, unsigned long boot_src,
                               size_t boot_size, unsigned long fdt_src, const char * uart_path);
@@ -66,7 +66,7 @@ bool is_slice_sbi_copy_done(void);
 void init_slice_sbi_copy_status(void);
 
 // Return True if this hart is the slice's owner hart;
-bool slice_is_owner_hart(void);
+unsigned slice_owner_hart(unsigned hartid);
 #endif
 
 void mpfs_domains_deregister_hart(int hartid);
