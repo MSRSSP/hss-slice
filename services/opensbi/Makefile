@@ -38,19 +38,21 @@ thirdparty/opensbi/build/lib/libsbi.a: libsbi
 
 ifeq ($(ENV), QEMU)
 SBI_PLATFORM_CFLAGS = -DCONFIG_QEMU=1 -DCONFIG_SLICE_SW_RESET=0
+SBI_BUILD_DIR = build-qemu
 else
 SBI_PLATFORM_CFLAGS = -DCONFIG_SLICE_SW_RESET=1
+SBI_BUILD_DIR = build
 endif
 
 libsbi:
 	@echo "make -C thirdparty/opensbi/ CROSS_COMPILE=$(CROSS_COMPILE) platform-cppflags-y=\"$(SBI_PLATFORM_CFLAGS)\" PLATFORM="generic" install_libsbi"
-	make -C thirdparty/opensbi/ CROSS_COMPILE=$(CROSS_COMPILE) platform-cppflags-y=\"$(SBI_PLATFORM_CFLAGS)\" PLATFORM="generic" install_libsbi
+	make -C thirdparty/opensbi/ O=${SBI_BUILD_DIR} CROSS_COMPILE=$(CROSS_COMPILE) platform-cppflags-y=\"$(SBI_PLATFORM_CFLAGS)\" PLATFORM="generic" install_libsbi
 
 thirdparty/opensbi/build/lib/libsbiutils.a: libsbiutils
 
 libsbiutils:
 	@echo "make -C thirdparty/opensbi/ CROSS_COMPILE=$(CROSS_COMPILE) platform-cppflags-y=\"$(SBI_PLATFORM_CFLAGS)\" PLATFORM="generic" install_libsbiutils"
-	make -C thirdparty/opensbi/ CROSS_COMPILE=$(CROSS_COMPILE) platform-cppflags-y=\"$(SBI_PLATFORM_CFLAGS)\" PLATFORM="generic" install_libsbiutils
+	make -C thirdparty/opensbi/ O=${SBI_BUILD_DIR} CROSS_COMPILE=$(CROSS_COMPILE) platform-cppflags-y=\"$(SBI_PLATFORM_CFLAGS)\" PLATFORM="generic" install_libsbiutils
 
 ASM_SRCS-$(CONFIG_SERVICE_OPENSBI) += \
 	thirdparty/opensbi/lib/sbi/riscv_hardfp.S \
