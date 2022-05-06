@@ -24,9 +24,9 @@ struct tinycli_key {
 static bool tinyCLI_NameToKeyIndex_(struct tinycli_key const *const keys,
                                     size_t numKeys, char const *const pToken,
                                     size_t *pIndex);
-static void slice_sw_start(int dom_index);
+void slice_sw_start(int dom_index);
 
-static void slice_sw_start(int dom_index) {
+__attribute__((weak)) void slice_sw_start(int dom_index) {
   if (dom_index < 1) {
     mHSS_FANCY_PRINTF(LOG_NORMAL, "Please use 1 arguments dom_index > 0. "
                                   "Refer to the dom_index from slice dump.\n");
@@ -174,11 +174,13 @@ void tinyCLI_Slice(unsigned narg, const char **argv_tokenArray) {
     SLICE_START,
     SLICE_CREATE,
     SLICE_DELETE,
+#ifndef TINY_TCB
     SLICE_DUMP,
     SLICE_HW_RESET,
     SLICE_PMP,
     SLICE_IPI_TEST,
     SLICE_CACHE_MASK,
+#endif
     SLICE_HELP,
     SLICE_END,
   };
@@ -187,12 +189,14 @@ void tinyCLI_Slice(unsigned narg, const char **argv_tokenArray) {
       {SLICE_START, "START", "start a slice."},
       {SLICE_CREATE, "CREATE", "create a slice."},
       {SLICE_DELETE, "DELETE", "delete a slice."},
+#ifndef TINY_TCB
       {SLICE_DUMP, "DUMP", "dump slice info."},
       {SLICE_HW_RESET, "RESET",
        "reset a slice via per-core reset unit (Only work in QEMU)."},
       {SLICE_PMP, "PMP", "dump pmp info."},
       {SLICE_IPI_TEST, "IPI", "send continuous ipi to a domain."},
       {SLICE_CACHE_MASK, "CACHE", "set or read cache config for a domain."},
+#endif
       {SLICE_HELP, "help", "slice help."},
   };
   int dom_index = -1;
@@ -204,12 +208,14 @@ void tinyCLI_Slice(unsigned narg, const char **argv_tokenArray) {
     switch (keyIndex) {
     case SLICE_STOP:
     case SLICE_DELETE:
+    case SLICE_START:
+#ifndef TINY_TCB
     case SLICE_DUMP:
     case SLICE_HW_RESET:
     case SLICE_PMP:
     case SLICE_IPI_TEST:
-    case SLICE_START:
     case SLICE_CACHE_MASK:
+#endif
       if (narg > 1) {
         dom_index = strtoul(argv_tokenArray[base_arg_idx + 1], 0, 10);
       }
@@ -237,15 +243,15 @@ void tinyCLI_Slice(unsigned narg, const char **argv_tokenArray) {
       slice_create_cli(narg, (const char **)&argv_tokenArray[base_arg_idx]);
       break;
     }
+#ifndef TINY_TCB
     case SLICE_DUMP: {
-      dump_slices_config("");
+      dump_slices_config();
       break;
     }
     case SLICE_HW_RESET: {
       slice_hw_reset(dom_index);
       break;
     }
-#ifndef TINY_TCB
     case SLICE_PMP: {
       slice_pmp_dump_by_index(dom_index);
       break;
