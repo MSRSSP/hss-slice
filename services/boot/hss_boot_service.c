@@ -681,7 +681,7 @@ static void boot_opensbi_init_handler(struct StateMachine * const pMyMachine)
                         IPI_MSG_OPENSBI_INIT,
                         pBootImage->hart[peer-1].privMode,
                         (void *)pBootImage->hart[peer-1].entryPoint,
-                        (void *)pInstanceData->ancilliaryData);
+                        (void *)pBootImage->hart[peer - 1].arg);
 
                     if (!result) {
                         mHSS_DEBUG_PRINTF(LOG_ERROR, "%s::u54_%u:sbi_init failed" CRLF,

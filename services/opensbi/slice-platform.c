@@ -279,6 +279,7 @@ static struct
     u32 next_mode;
     int owner_hartid;
     int boot_pending;
+    u64 mem_start;
     u64 mem_size;
     u64 next_boot_src;
     size_t next_boot_size;
@@ -329,6 +330,24 @@ void slice_register_boot_hart(int boot_hartid,
     hart_table[boot_hartid].slice_fdt_src = fdt_src;
 }
 
+unsigned long slice_mem_start_this_hart(void){
+    int hartid = current_hartid();
+    int owner = hart_table[hartid].owner_hartid;
+    return hart_table[owner].mem_start;
+}
+
+bool slice_is_owner_hart(void){
+    int hartid = current_hartid();
+    return hartid == hart_table[hartid].owner_hartid;
+}
+
+bool is_slice_sbi_copy_done(void){
+    int hartid = current_hartid();
+    int owner = hart_table[hartid].owner_hartid;
+    return hart_table[owner].boot_pending == 0;
+}
+
+#define SLICE_OS_OFFSET 0x200000
 void mpfs_domains_register_boot_hart(char *pName,
                                      u32 hartMask,
                                      int boot_hartid,
@@ -340,23 +359,16 @@ void mpfs_domains_register_boot_hart(char *pName,
     assert(hart_table[boot_hartid].owner_hartid == boot_hartid);
 
     memcpy(hart_table[boot_hartid].name, pName, ARRAY_SIZE(hart_table[boot_hartid].name) - 1);
-    hart_table[boot_hartid].next_addr = (u64)entryPoint;
-    hart_table[boot_hartid].next_arg1 = (u64)pArg1;
+    hart_table[boot_hartid].mem_size = mem_size;
+    hart_table[boot_hartid].mem_start = (u64)entryPoint;
+    hart_table[boot_hartid].next_addr = (u64)entryPoint + SLICE_OS_OFFSET;
+    hart_table[boot_hartid].next_arg1 = (u64)pArg1 + SLICE_OS_OFFSET;
     hart_table[boot_hartid].hartMask.bits[0] = hartMask;
     hart_table[boot_hartid].next_mode = privMode;
-    hart_table[boot_hartid].mem_size = mem_size;
 }
 
 static int init_slice_shared_mem(struct sbi_domain_memregion * regions, unsigned int count, unsigned int * out_count){
     // Dirty region for test; To be removed
-    struct sbi_scratch *const pScratch = sbi_scratch_thishart_ptr();
-    regions[count].base = pScratch->fw_start;
-    regions[count].order = 24;
-    regions[count].flags = ALL_PERM;
-    count++;
-    if(count > DOMAIN_REGION_MAX_COUNT){
-        return SBI_ERR_FAILED;
-    }
     // CLINT map except for IPI
     regions[count].base = MPFS_CLINT_ADDR + MPFS_HART_COUNT*IPI_REG_WIDTH;
     regions[count].order = 30;
@@ -437,12 +449,14 @@ static int mpfs_domains_init(void)
                 pDom->next_arg1 = hart_table[boot_hartid].next_arg1;
                 pDom->next_addr = hart_table[boot_hartid].next_addr;
                 pDom->next_mode = hart_table[boot_hartid].next_mode;
-                pDom->slice_mem_size = hart_table[boot_hartid].mem_size;
                 pDom->system_reset_allowed = TRUE;
                 pDom->possible_harts = pMask;
                 pDom->slice_type = SLICE_TYPE_SLICE;
                 pDom->next_boot_src = hart_table[boot_hartid].next_boot_src;
                 pDom->next_boot_size = hart_table[boot_hartid].next_boot_size;
+                pDom->slice_mem_start = hart_table[boot_hartid].mem_start;
+                pDom->slice_mem_size = hart_table[boot_hartid].mem_size;
+                pDom->slice_type = SLICE_TYPE_SLICE;
                 pDom->slice_dt_src = (void *)hart_table[boot_hartid].slice_fdt_src;
                 init_slice_mem_regions(pDom);
                 result = sbi_domain_register(pDom, pMask);
