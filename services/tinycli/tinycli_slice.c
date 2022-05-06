@@ -136,7 +136,38 @@ static void slice_help(const struct tinycli_key *debugKeys, size_t nKeys) {
   }
 }
 
-void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
+static void slice_ipi_test_cli(int dom_index, size_t narg, const char **argv) {
+  bool done = false;
+  HSSTicks_t last_sec_time = HSS_GetTime();
+  uint8_t cBuf[1];
+  // default ticks = 100;
+  unsigned long ticks = 500;
+  int opt;
+  // parse from the argv[2]
+  optind = 2;
+  while ((opt = getopt(narg, (char **)argv, "t:h")) != -1)
+    switch (opt) {
+    case 't':
+      mHSS_FANCY_PRINTF(LOG_NORMAL, "slice ipi dom_index -t %s\n", optarg);
+      ticks = strtoul(optarg, 0, 10);
+      break;
+    default:
+      mHSS_FANCY_PRINTF(LOG_NORMAL, "slice ipi dom_index -t ticks");
+      break;
+    }
+  mHSS_FANCY_PRINTF(LOG_NORMAL, "run ipi test per %d ticks, narg= %d\n", ticks,
+                    narg);
+  while (!done) {
+    if (HSS_Timer_IsElapsed(last_sec_time, ticks)) {
+      slice_ipi_test(dom_index);
+      last_sec_time = HSS_GetTime();
+    }
+  }
+}
+
+extern void slice_process_cache_mask(int dom_index, uint64_t mask);
+
+void tinyCLI_Slice(unsigned narg, const char **argv_tokenArray) {
   size_t keyIndex;
   enum slice_cmd {
     SLICE_STOP,
@@ -146,6 +177,8 @@ void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
     SLICE_DUMP,
     SLICE_HW_RESET,
     SLICE_PMP,
+    SLICE_IPI_TEST,
+    SLICE_CACHE_MASK,
     SLICE_HELP,
     SLICE_END,
   };
@@ -158,6 +191,8 @@ void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
       {SLICE_HW_RESET, "RESET",
        "reset a slice via per-core reset unit (Only work in QEMU)."},
       {SLICE_PMP, "PMP", "dump pmp info."},
+      {SLICE_IPI_TEST, "IPI", "send continuous ipi to a domain."},
+      {SLICE_CACHE_MASK, "CACHE", "set or read cache config for a domain."},
       {SLICE_HELP, "help", "slice help."},
   };
   int dom_index = -1;
@@ -172,7 +207,9 @@ void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
     case SLICE_DUMP:
     case SLICE_HW_RESET:
     case SLICE_PMP:
+    case SLICE_IPI_TEST:
     case SLICE_START:
+    case SLICE_CACHE_MASK:
       if (narg > 1) {
         dom_index = strtoul(argv_tokenArray[base_arg_idx + 1], 0, 10);
       }
@@ -192,6 +229,7 @@ void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
       break;
     }
     case SLICE_DELETE: {
+      mHSS_FANCY_PRINTF(LOG_NORMAL, "%s: delete %d\n", __func__, dom_index);
       slice_delete(dom_index);
       break;
     }
@@ -207,10 +245,22 @@ void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
       slice_hw_reset(dom_index);
       break;
     }
+#ifndef TINY_TCB
     case SLICE_PMP: {
       slice_pmp_dump_by_index(dom_index);
       break;
     }
+    case SLICE_IPI_TEST: {
+      slice_ipi_test_cli(dom_index, narg,
+                         (const char **)&argv_tokenArray[base_arg_idx]);
+      break;
+    }
+    case SLICE_CACHE_MASK: {
+      uint64_t mask = strtoul(argv_tokenArray[base_arg_idx + 2], 0, 0);
+      slice_process_cache_mask(dom_index, mask);
+      break;
+    }
+#endif
     default:
       slice_help(debugKeys, SLICE_END);
       break;

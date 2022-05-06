@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-void tinyCLI_Slice(size_t argc_tokenCount, const char **argv_tokenArray);
+void tinyCLI_Slice(unsigned argc_tokenCount, const char **argv_tokenArray);
 
 #ifdef __cplusplus
 }
