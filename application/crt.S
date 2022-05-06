@@ -27,6 +27,7 @@
 	.globl	_start
 	.globl	_start_warm
 _start:
+// a0: boot_hartid. System-wide boot if a0=0 else slice-wide boot
 	call .__slice_init
 	la	ra, _start
 	call	_reset_regs
@@ -65,11 +66,10 @@ _start:
 
 _try_lottery:
 	/* Jump to relocation wait loop if we don't get relocation lottery */
-	lla	a6, _relocate_lottery
-	li	a7, 1
-	amoadd.w a6, a7, (a6)
-	bnez	a6, _wait_relocate_copy_done
-
+	lla	 s1, boot_hartid
+	REG_L s1, (s1)
+	csrr	s2, CSR_MHARTID
+	bne s1, s2, _wait_relocate_copy_done
 	/* Save load address */
 	lla	t0, _load_start
 	lla	t1, _hss_start
@@ -236,7 +236,8 @@ _wait_for_boot_hart:
 	li	s8, __STACK_SIZE_PER_HART
     csrr	a0, CSR_MHARTID
 
-    lla	tp, __stack_bottom + 63
+    //lla	tp,  __stack_bottom + 63
+	lla tp, _fw_reloc_end + 63
     and	tp, tp, -64
     li	a1, 1
 
@@ -279,16 +280,15 @@ _wait_for_boot_hart:
 	csrw	CSR_SATP, 0 # clear SATP early on U54s, as it appears to be coming up randomly
 
 .jump_sbi_if_slice:
-	lla	 a0, _slice_sbi_boot
+	lla	 a0, boot_hartid
 	REG_L a0, (a0)
-	li	a3, 0x8000000
-	bgtu a0, a1, .__slice_sbi_jump
+	bnez a0, __slice_sbi_jump
 
 .enable_interrupts:
 	li	a2, MIP_MSIP // set MSIE bit to receive IPIs
     csrw	CSR_MIE, a2
     csrw    CSR_MSTATUS, a2
-    jal	HSS_U54_Banner
+	jal	HSS_U54_Banner
 
 #if defined(CONFIG_HSS_USE_IHC)
 .enable_ihc:
@@ -313,7 +313,9 @@ _wait_for_boot_hart:
 
         li	a2, MIP_MSIP
 	csrc	CSR_MSTATUS, a2
-
+	nop
+	nop
+	nop
         j main
 
 .set_trap_handler:
@@ -660,25 +662,23 @@ copy_switch_code:
 .done_clear:
 	ret
 
-.__slice_sbi_jump:
+__slice_sbi_jump:
 	/* At this point we are running from link address */
-    csrw    CSR_MSTATUS, zero
+	/*csrw    CSR_MSTATUS, zero
 	csrr	a1, CSR_MSCRATCH
 	la 		a2, SBI_SCRATCH_SIZE
     add 	a2, a2, a1
 	call	copy_section
-	li a1, 0
+	*/
 	csrr	a0, CSR_MHARTID
+	li a1, 0
 	call	HSS_OpenSBI_DoBoot
 	ret
 
-.__slice_init:
-	lla	s1, _slice_sbi_boot
-	REG_S	a0, (s1)
-	bnez a0, .__slice_init_done
-	lla s2, slice_hss_l2lim_lz
-	REG_S a1, (s2)
-.__slice_init_done:
+.__slice_init:	
+	lla s2, boot_hartid
+	REG_S a0, (s2)
+_slice_init_done:
 	ret
 
 .align 4
@@ -701,6 +701,5 @@ _relocate_status:
 .globl _relocate_lottery
 _relocate_lottery:
 	RISCV_PTR	0
-.globl slice_hss_l2lim_lz
-slice_hss_l2lim_lz:
+boot_hartid:
 	RISCV_PTR	0
