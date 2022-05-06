@@ -44,38 +44,22 @@ endif
 
 libsbi-objs-y += riscv_asm.o
 libsbi-objs-y += riscv_atomic.o
-libsbi-objs-y += riscv_hardfp.o
 libsbi-objs-y += riscv_locks.o
 
 libsbi-objs-y += sbi_bitmap.o
 libsbi-objs-y += sbi_bitops.o
 libsbi-objs-y += sbi_console.o
 libsbi-objs-y += sbi_domain.o
-#libsbi-objs-y += sbi_ecall.o
-#libsbi-objs-y += sbi_ecall_base.o
-#libsbi-objs-y += sbi_ecall_hsm.o
-#libsbi-objs-y += sbi_ecall_legacy.o
-#libsbi-objs-y += sbi_ecall_replace.o
-#libsbi-objs-y += sbi_ecall_vendor.o
-#libsbi-objs-y += sbi_emulate_csr.o
-#libsbi-objs-y += sbi_fifo.o
 libsbi-objs-y += sbi_hart.o
 libsbi-objs-y += sbi_math.o
-#libsbi-objs-y += sbi_hfence.o
 libsbi-objs-y += sbi_hsm.o
-#libsbi-objs-y += sbi_illegal_insn.o
 libsbi-objs-y += sbi_init_count.o
 libsbi-objs-y += sbi_ipi.o
-#libsbi-objs-y += sbi_misaligned_ldst.o
 libsbi-objs-y += sbi_platform.o
 libsbi-objs-y += sbi_scratch.o
 libsbi-objs-y += sbi_string.o
 libsbi-objs-y += sbi_system.o
 libsbi-objs-y += sbi_timer.o
-#libsbi-objs-y += sbi_tlb.o
-#libsbi-objs-y += sbi_trap.o
-#libsbi-objs-y += sbi_unpriv.o
-#libsbi-objs-y += sbi_expected_trap.o
 libslice-objs-y += slice_loader_start.o
 libslice-objs-y += slice.o
 libslice-objs-y += slice_smp.o
@@ -86,18 +70,11 @@ libslice-objs-y += slice_reset.o
 
 LIBS += $(foreach obj,$(libsbi-objs-y),thirdparty/opensbi/$(SBI_BUILD_DIR)/lib/sbi/$(obj))
 LIBS += $(foreach obj,$(libslice-objs-y),thirdparty/opensbi/$(SBI_BUILD_DIR)/lib/slice/$(obj))
-#fdt-objs +=lib/utils/fdt/fdt_domain.o
-#fdt-objs +=lib/utils/serial/*.o
-#fdt-objs +=lib/utils/libfdt/*.o
-#fdt-objs +=lib/utils/sys/*.o
-#fdt-objs +=lib/utils/irqchip/*.o
 fdt-objs += lib/utils/sys/clint.o
 fdt-objs += lib/utils/irqchip/plic.o
 fdt-objs += lib/utils/fdt/fdt_domain_data.o
 
 LIBS += $(foreach obj,$(fdt-objs),thirdparty/opensbi/$(SBI_BUILD_DIR)/$(obj))
-#LIBS+=thirdparty/opensbi/$(SBI_BUILD_DIR)/lib/libsbi.a
-#LIBS+=thirdparty/opensbi/$(SBI_BUILD_DIR)/lib/libsbiutils.a
 
 L2LIM_SLICE_DEP += thirdparty/opensbi/$(SBI_BUILD_DIR)/platform/slice/firmware/slice_fw_dynamic.bin
 
@@ -108,22 +85,6 @@ slice_fw_dynamic: config.h
 	make -C thirdparty/opensbi/ CROSS_COMPILE=$(CROSS_COMPILE) PLATFORM="slice" SLICE_HSS_DIR=$(shell pwd) FW_PIC=y -j16 O=$(SBI_BUILD_DIR)
 
 application/crt.o: slice_fw_dynamic
-
-thirdparty/opensbi/$(SBI_BUILD_DIR)/lib/libsbi.a: libsbi
-libsbi:
-	@echo "make -C thirdparty/opensbi/ CROSS_COMPILE=$(CROSS_COMPILE) platform-cppflags-y=\"$(SBI_PLATFORM_CFLAGS)\" PLATFORM="generic" install_libsbi"
-	make -C thirdparty/opensbi/ O=${SBI_BUILD_DIR} CROSS_COMPILE=$(CROSS_COMPILE) platform-cppflags-y="$(SBI_PLATFORM_CFLAGS)" PLATFORM="slice" 
-
-thirdparty/opensbi/$(SBI_BUILD_DIR)/lib/libsbiutils.a: libsbiutils
-
-libsbiutils:
-	@echo make -C thirdparty/opensbi/ O=${SBI_BUILD_DIR} CROSS_COMPILE=$(CROSS_COMPILE) platform-cppflags-y=\"$(SBI_PLATFORM_CFLAGS)\" PLATFORM="generic" install_libsbiutils
-	make -C thirdparty/opensbi/ O=${SBI_BUILD_DIR} CROSS_COMPILE=$(CROSS_COMPILE) platform-cppflags-y="$(SBI_PLATFORM_CFLAGS)" PLATFORM="generic" install_libsbiutils
-
-ASM_SRCS-$(CONFIG_SERVICE_OPENSBI) += \
-	thirdparty/opensbi/lib/sbi/riscv_hardfp.S \
-	thirdparty/opensbi/lib/sbi/sbi_expected_trap.S \
-	thirdparty/opensbi/lib/sbi/sbi_hfence.S \
 
 ifdef CONFIG_SLICE
 #SRCS-$(CONFIG_SERVICE_OPENSBI) += 

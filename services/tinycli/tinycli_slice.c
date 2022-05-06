@@ -136,6 +136,7 @@ static void slice_help(const struct tinycli_key *debugKeys, size_t nKeys) {
   }
 }
 
+#ifndef TINY_TCB
 static void slice_ipi_test_cli(int dom_index, size_t narg, const char **argv) {
   bool done = false;
   HSSTicks_t last_sec_time = HSS_GetTime();
@@ -164,6 +165,7 @@ static void slice_ipi_test_cli(int dom_index, size_t narg, const char **argv) {
     }
   }
 }
+#endif
 
 extern void slice_process_cache_mask(int dom_index, uint64_t mask);
 
@@ -244,12 +246,11 @@ void tinyCLI_Slice(unsigned narg, const char **argv_tokenArray) {
       break;
     }
 #ifndef TINY_TCB
-    case SLICE_DUMP: {
-      dump_slices_config();
+    case SLICE_HW_RESET: {
       break;
     }
-    case SLICE_HW_RESET: {
-      slice_hw_reset(dom_index);
+    case SLICE_DUMP: {
+      dump_slices_config();
       break;
     }
     case SLICE_PMP: {

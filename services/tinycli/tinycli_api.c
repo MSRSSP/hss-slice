@@ -932,6 +932,8 @@ static void tinyCLI_CmdHandler_(int tokenId)
 
     size_t index;
     switch (tokenId) {
+#if IS_ENABLED(CONFIG_SERVICE_TINYCLI_FULL)
+
     case CMD_HELP:
         tinyCLI_PrintHelp_();
         break;
@@ -958,16 +960,16 @@ static void tinyCLI_CmdHandler_(int tokenId)
         tinyCLI_Reset_();
         break;
 
-    case CMD_SLICE:
-        tinyCLI_Slice(argc_tokenCount-1, (const char**)&argv_tokenArray[1]);
-        break;
-
     case CMD_QUIT:
         quitFlag = true;
         break;
 
     case CMD_BOOT:
         quitFlag = tinyCLI_Boot_();
+        break;
+#endif  
+    case CMD_SLICE:
+        tinyCLI_Slice(argc_tokenCount-1, (const char**)&argv_tokenArray[1]);
         break;
 
 #if IS_ENABLED(CONFIG_MEMTEST)
