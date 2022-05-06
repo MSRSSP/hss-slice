@@ -3,7 +3,7 @@ To simplify the workflow for slicing device tree and relocating kernel, we
 removed U-boot from the booting workflow.
 
 If you are interested in Hart Software Service, please refer to  [Hart Software
-Service](README_base.md) for more information.
+Service](README.md) for more information.
 
 # Dependency
 1. RISCV GCC toolkit
@@ -24,8 +24,8 @@ unsupported operations.
 
 ## Build HSS:
    ```bash
-   make BOARD=mpfs-icicle-kit-es defconfig
-   make BOARD=mpfs-icicle-kit-es ENV=QEMU
+   make BOARD=slice defconfig
+   make BOARD=slice ENV=QEMU
    ```
 
 # Build payload for HSS
@@ -37,15 +37,19 @@ unsupported operations.
 | `EXAMPLE` | Example description |
 | --- | --- |
 | `EXAMPLE=single` | booting a single kernel in a 4-core machine |
-| `EXAMPLE=slice` | booting one kernel at 0x80000000 using core 1-2 and another kernel at 0x9000000 using core 3-4|
+| `EXAMPLE=slice` | booting one kernel at 0x80000000 using core 1-2 and slice mem 0x80000000- 0x9fffffff and another kernel at 0x1000000000 using core 3-4 and slice mem 0x1000000000- 0x1020000000|
 
+| `BOARD` | description |
+| --- | --- |
+| `BOARD=slice` | Same board design with `mpfs-icicle-kit-es` with slicing software support (binding uart0 to E core and uart1 to other 4 U cores before enter kernel; PMP setup for security; etc.) |
+| `BOARD=mpfs-icicle-kit-es` | Original HSS for Polarfire Soc Icicle kit|
 
 # Build HSS and run examples using QEMU.
 ## Build HSS:
 Build with `ENV=QEMU`.
 ```bash
-make BOARD=mpfs-icicle-kit-es defconfig
-make BOARD=mpfs-icicle-kit-es ENV=QEMU
+make BOARD=slice defconfig
+make BOARD=slice ENV=QEMU
 ```
 
 ## Build payload for HSS
@@ -81,8 +85,8 @@ to comment out some boot procedures not supported by `qemu`.
 # Build HSS and run examples in a PolarFire Soc Icicle kit.
 ## Build HSS:
 ```bash
-make BOARD=mpfs-icicle-kit-es defconfig
-make BOARD=mpfs-icicle-kit-es
+make BOARD=slice defconfig
+make BOARD=slice
 ```
 
 ## Write HSS to NVMe via J33 port
