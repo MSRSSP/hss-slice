@@ -156,7 +156,10 @@ _start:
 	fence.i
 	nop
 	nop
-
+	# a0 <- Is this a slice-wide reset, 1: True, 0: False?
+	# a1 <- compressed hss-l2 firmware (Unused).
+	li a0, 0 
+	la a1, hss_l2lim_lz
 	call	_hss_start
 	la	a0, _hss_start
 	csrw	CSR_MEPC, a0
@@ -169,7 +172,8 @@ _start:
 	or	a0, a0, a1
 	csrw	CSR_MSTATUS, a0
 	csrr	a0, CSR_MHARTID
-	li	a1, 0
+	li a0, 0
+	la a1, hss_l2lim_lz
 	mret
 
 	.align	3

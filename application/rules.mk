@@ -28,7 +28,7 @@
 # basic build rules (.c to .o, etc)
 #
 
-CROSS_COMPILE?=riscv64-unknown-elf-
+CROSS_COMPILE?=riscv64-unknown-linux-gnu-
 CC=$(CROSS_COMPILE)gcc
 RANLIB=$(CROSS_COMPILE)ranlib
 CPP=$(CROSS_COMPILE)cpp

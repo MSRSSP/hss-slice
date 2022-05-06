@@ -14,6 +14,7 @@
 #include <config.h>
 
 #include <sbi/riscv_asm.h>
+#include <sbi/riscv_elf.h>
 #include <sbi/riscv_encoding.h>
 #include <sbi/sbi_platform.h>
 #include <sbi/sbi_scratch.h>
@@ -26,9 +27,11 @@
 	.globl	_start
 	.globl	_start_warm
 _start:
+	call .__slice_init
 	la	ra, _start
 	call	_reset_regs
 
+#define __STACK_SIZE_PER_HART 4000
 .macro LOAD_GP
         //
         // RISC-V Relaxing and the Global Pointer, GP
@@ -51,26 +54,196 @@ _start:
 .endm
 
 	LOAD_GP
+.relocate:
+#define BOOT_STATUS_RELOCATE_DONE	1
+.macro BRANGE __start_reg, __end_reg, __check_reg, __jump_lable
+	blt	\__check_reg, \__start_reg, 999f
+	bge	\__check_reg, \__end_reg, 999f
+	j	\__jump_lable
+999:
+.endm
 
+_try_lottery:
+	/* Jump to relocation wait loop if we don't get relocation lottery */
+	lla	a6, _relocate_lottery
+	li	a7, 1
+	amoadd.w a6, a7, (a6)
+	bnez	a6, _wait_relocate_copy_done
+
+	/* Save load address */
+	lla	t0, _load_start
+	lla	t1, _hss_start
+	REG_S	t1, 0(t0)
+#ifdef FW_PIC
+	/* relocate the global table content */
+	lla	t0, _link_start
+	REG_L	t0, 0(t0)
+	/* t1 shall has the address of _hss_start */
+	sub	t2, t1, t0
+	lla	t3, _runtime_offset
+	REG_S	t2, (t3)
+	lla	t0, __rel_dyn_start
+	lla	t1, __rel_dyn_end
+	beq	t0, t1, _relocate_done
+	j	5f
+2:
+	REG_L	t5, -(REGBYTES*2)(t0)	/* t5 <-- relocation info:type */
+	li	t3, R_RISCV_RELATIVE	/* reloc type R_RISCV_RELATIVE */
+	bne	t5, t3, 3f
+	REG_L	t3, -(REGBYTES*3)(t0)
+	REG_L	t5, -(REGBYTES)(t0)	/* t5 <-- addend */
+	add	t5, t5, t2
+	add	t3, t3, t2
+	REG_S	t5, 0(t3)		/* store runtime address to the GOT entry */
+	j	5f
+
+3:
+	lla	t4, __dyn_sym_start
+
+4:
+	REG_L	t5, -(REGBYTES*2)(t0)	/* t5 <-- relocation info:type */
+	srli	t6, t5, SYM_INDEX	/* t6 <--- sym table index */
+	andi	t5, t5, 0xFF		/* t5 <--- relocation type */
+	li	t3, RELOC_TYPE
+	bne	t5, t3, 5f
+
+	/* address R_RISCV_64 or R_RISCV_32 cases*/
+	REG_L	t3, -(REGBYTES*3)(t0)
+	li	t5, SYM_SIZE
+	mul	t6, t6, t5
+	add	s5, t4, t6
+	REG_L	t6, -(REGBYTES)(t0)	/* t0 <-- addend */
+	REG_L	t5, REGBYTES(s5)
+	add	t5, t5, t6
+	add	t5, t5, t2		/* t5 <-- location to fix up in RAM */
+	add	t3, t3, t2		/* t3 <-- location to fix up in RAM */
+	REG_S	t5, 0(t3)		/* store runtime address to the variable */
+
+5:
+	addi	t0, t0, (REGBYTES*3)
+	ble	t0, t1, 2b
+	j	_relocate_done
+_wait_relocate_copy_done:
+	j	_wait_for_boot_hart
+#else
+	/* Relocate if load address != link address */
+_relocate:
+	lla	t0, _link_start
+	REG_L	t0, 0(t0)
+	lla	t1, _link_end
+	REG_L	t1, 0(t1)
+	lla	t2, _load_start
+	REG_L	t2, 0(t2)
+	sub	t3, t1, t0
+	add	t3, t3, t2
+	beq	t0, t2, _relocate_done
+	lla	t4, _relocate_done
+	sub	t4, t4, t2
+	add	t4, t4, t0
+	blt	t2, t0, _relocate_copy_to_upper
+_relocate_copy_to_lower:
+	ble	t1, t2, _relocate_copy_to_lower_loop
+	lla	t3, _relocate_lottery
+	BRANGE	t2, t1, t3, _start_hang
+	lla	t3, _relocate_status
+	BRANGE	t2, t1, t3, _start_hang
+	lla	t3, _relocate
+	lla	t5, _relocate_done
+	BRANGE	t2, t1, t3, _start_hang
+	BRANGE	t2, t1, t5, _start_hang
+	BRANGE  t3, t5, t2, _start_hang
+_relocate_copy_to_lower_loop:
+	REG_L	t3, 0(t2)
+	REG_S	t3, 0(t0)
+	add	t0, t0, __SIZEOF_POINTER__
+	add	t2, t2, __SIZEOF_POINTER__
+	blt	t0, t1, _relocate_copy_to_lower_loop
+	jr	t4
+_relocate_copy_to_upper:
+	ble	t3, t0, _relocate_copy_to_upper_loop
+	lla	t2, _relocate_lottery
+	BRANGE	t0, t3, t2, _start_hang
+	lla	t2, _relocate_status
+	BRANGE	t0, t3, t2, _start_hang
+	lla	t2, _relocate
+	lla	t5, _relocate_done
+	BRANGE	t0, t3, t2, _start_hang
+	BRANGE	t0, t3, t5, _start_hang
+	BRANGE	t2, t5, t0, _start_hang
+_relocate_copy_to_upper_loop:
+	add	t3, t3, -__SIZEOF_POINTER__
+	add	t1, t1, -__SIZEOF_POINTER__
+	REG_L	t2, 0(t3)
+	REG_S	t2, 0(t1)
+	blt	t0, t1, _relocate_copy_to_upper_loop
+	jr	t4
+_wait_relocate_copy_done:
+	lla	t0, _hss_start
+	lla	t1, _link_start
+	REG_L	t1, 0(t1)
+	beq	t0, t1, _wait_for_boot_hart
+	lla	t2, _relocate_status
+	lla	t3, _wait_for_boot_hart
+	sub	t3, t3, t0
+	add	t3, t3, t1
+1:
+	/* waitting for relocate copy done (_relocate_status == 1) */
+	li	t4, BOOT_STATUS_RELOCATE_DONE
+	REG_L	t5, 0(t2)
+	/* Reduce the bus traffic so that boot hart may proceed faster */
+	nop
+	nop
+	nop
+	bgt     t4, t5, 1b
+	jr	t3
+#endif
+_relocate_done:
+
+	/*
+	 * Mark relocate copy done
+	 * Use _relocate_status copy relative to the load address
+	 */
+	lla	t0, _relocate_status
+#ifndef FW_PIC
+	lla	t1, _link_start
+	REG_L	t1, 0(t1)
+	lla	t2, _load_start
+	REG_L	t2, 0(t2)
+	sub	t0, t0, t1
+	add	t0, t0, t2
+#endif
+	li	t1, BOOT_STATUS_RELOCATE_DONE
+	REG_S	t1, 0(t0)
+	fence	rw, rw
+
+_wait_for_boot_hart:
+	li	t0, BOOT_STATUS_RELOCATE_DONE
+	lla	t1, _relocate_status
+	REG_L	t1, 0(t1)
+	/* Reduce the bus traffic so that boot hart may proceed faster */
+	nop
+	nop
+	nop
+	bne	t0, t1, _wait_for_boot_hart
 	// Preload HART details
 	// s7 -> HART Count
 	// s8 -> HART Stack Size
         // a0 -> current HART ID
 	//
-        la	a4, platform
+	la	a4, platform
 	lwu	s7, SBI_PLATFORM_HART_COUNT_OFFSET(a4)
 	//lwu	s8, SBI_PLATFORM_HART_STACK_SIZE_OFFSET(a4)
-	la	s8, STACK_SIZE_PER_HART
-        csrr	a0, CSR_MHARTID
+	li	s8, __STACK_SIZE_PER_HART
+    csrr	a0, CSR_MHARTID
 
-        la	tp, __stack_bottom + 63
-        and	tp, tp, -64
-        li	a1, 1
+    lla	tp, __stack_bottom + 63
+    and	tp, tp, -64
+    li	a1, 1
 
 .setup_stack:
 	mul	a2, s8, a0
 	add	tp, tp, a2
-        la	sp, STACK_SIZE_PER_HART
+    li	sp, __STACK_SIZE_PER_HART
 	add	sp, sp, tp
 
 .setup_scratches:
@@ -95,21 +268,27 @@ _start:
 
 	csrw	CSR_MSCRATCH, tp // update the mscratch
 
-        csrr	a0, CSR_MHARTID
-        beqz	a0, .boot_e51
+    csrr	a0, CSR_MHARTID
+    beqz	a0, .boot_e51
+
 
 .setup_u54_trap_handler:
 	la	a4, _trap_handler
-        call	.set_trap_handler
+    call	.set_trap_handler
 
 	csrw	CSR_SATP, 0 # clear SATP early on U54s, as it appears to be coming up randomly
 
-.enable_interrupts:
-        li	a2, MIP_MSIP // set MSIE bit to receive IPIs
-        csrw	CSR_MIE, a2
-        csrw    CSR_MSTATUS, a2
+.jum_sbi_if_slice:
+	lla	 a0, _slice_sbi_boot
+	REG_L a0, (a0)
+	li	a3, 0x8000000
+	bgtu a0, a1, .__slice_sbi_jump
 
-        jal	HSS_U54_Banner
+.enable_interrupts:
+	li	a2, MIP_MSIP // set MSIE bit to receive IPIs
+    csrw	CSR_MIE, a2
+    csrw    CSR_MSTATUS, a2
+    jal	HSS_U54_Banner
 
 #if defined(CONFIG_HSS_USE_IHC)
 .enable_ihc:
@@ -480,3 +659,48 @@ copy_switch_code:
 	blt	a4, a5, 1b
 .done_clear:
 	ret
+
+.__slice_sbi_jump:
+	/* At this point we are running from link address */
+    csrw    CSR_MSTATUS, zero
+	csrr	a1, CSR_MSCRATCH
+	la 		a2, SBI_SCRATCH_SIZE
+    add 	a2, a2, a1
+	call	copy_section
+	li a1, 0
+	csrr	a0, CSR_MHARTID
+	call	HSS_OpenSBI_DoBoot
+	ret
+
+.__slice_init:
+	lla	s1, _slice_sbi_boot
+	REG_S	a0, (s1)
+	bnez a0, .__slice_init_done
+	lla s2, slice_hss_l2lim_lz
+	REG_S a1, (s2)
+.__slice_init_done:
+	ret
+
+.align 4
+_slice_sbi_boot:
+	RISCV_PTR 0x0
+
+#ifdef FW_PIC
+_runtime_offset:
+	RISCV_PTR	0
+#endif
+_load_start:
+	RISCV_PTR	0x8000000
+_link_start:
+	RISCV_PTR	0x8000000
+_link_end:
+	RISCV_PTR	_fw_reloc_end
+.globl _relocate_status
+_relocate_status:
+	RISCV_PTR	0
+.globl _relocate_lottery
+_relocate_lottery:
+	RISCV_PTR	0
+.globl slice_hss_l2lim_lz
+slice_hss_l2lim_lz:
+	RISCV_PTR	0
