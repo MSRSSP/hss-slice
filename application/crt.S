@@ -266,9 +266,13 @@ _wait_for_boot_hart:
 	li	a5, SBI_SCRATCH_SIZE
 	mul	a5, a5, a0
 	add	tp, tp, a5
-
 	csrw	CSR_MSCRATCH, tp // update the mscratch
-
+	li a5, 8
+	mul a5, a5, a0
+	la s1, hss_start_time
+	add s1, s1, a5
+	csrr a0, CSR_MCYCLE
+	sd a0, 0(s1) // hss_start_time[hartid] =csrr(CSR_MCYCLE)
     csrr	a0, CSR_MHARTID
     beqz	a0, .boot_e51
 
