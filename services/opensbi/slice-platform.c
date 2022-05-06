@@ -246,7 +246,7 @@ int sbi_hart_pmp_configure(struct sbi_scratch *pScratch)
 static struct sbi_domain_memregion domain_regions[MAX_NUM_HARTS]
                                                  [DOMAIN_REGION_MAX_COUNT + 1];
 
-static struct {
+struct hart_info {
   char name[64];
   u64 next_addr;
   u64 next_arg1;
@@ -259,24 +259,25 @@ static struct {
   u64 next_boot_src;
   size_t next_boot_size;
   unsigned long slice_fdt_src;
-} hart_table[MAX_NUM_HARTS] = {0};
+};
 
+static struct hart_info * hart_table = (struct hart_info *)CONFIG_SERVICE_BOOT_DDR_SLICE_PRIVATE_START;
 void mpfs_domains_register_hart(int hartid, int boot_hartid) {
   hart_table[hartid].owner_hartid = boot_hartid;
   hart_table[hartid].boot_pending = 1;
 }
 
 void mpfs_mark_hart_as_booted(enum HSSHartId hartid) {
-  assert(hartid < ARRAY_SIZE(hart_table));
+  assert(hartid < MAX_NUM_HARTS);
 
-  if (hartid < ARRAY_SIZE(hart_table)) {
+  if (hartid < MAX_NUM_HARTS) {
     hart_table[hartid].boot_pending = 0;
   }
 }
 
 bool mpfs_is_last_hart_booting(void) {
   int outstanding = 0;
-  for (int hartid = 0; hartid < ARRAY_SIZE(hart_table); hartid++) {
+  for (int hartid = 0; hartid < MAX_NUM_HARTS; hartid++) {
     outstanding += hart_table[hartid].boot_pending;
   }
 
@@ -295,9 +296,10 @@ void slice_register_boot_hart(int boot_hartid, unsigned long boot_src,
 }
 
 static int slice_unregister_hart(unsigned hartid) {
-  sbi_printf("%s: hartid = %d\n", __func__, hartid);
-  memset(&hart_table[hartid], 0, sizeof(hart_table[hartid]));
-  hart_table[hartid].owner_hartid = hartid;
+  sbi_printf("%s: hartid = %d size=%ld\n", __func__, hartid, sizeof(hart_table[hartid]));
+  hart_table[hartid].owner_hartid = 0;
+  hart_table[hartid].mem_size = 0;
+  hart_table[hartid].hartMask.bits[0] = 0;
   return 0;
 }
 
@@ -430,7 +432,7 @@ static int mpfs_domains_init(void) {
   // Set hart0 as host hart;
   register_host_hartid(0);
   sbi_printf("mpfs_domains_init\n");
-  for (int hartid = 1; hartid < ARRAY_SIZE(hart_table); hartid++) {
+  for (int hartid = 1; hartid < MAX_NUM_HARTS; hartid++) {
     const int boot_hartid = hart_table[hartid].owner_hartid;
 
     if (boot_hartid == hartid) {
