@@ -304,9 +304,12 @@ void slice_register_boot_hart(int boot_hartid, unsigned long boot_src,
 static int slice_unregister_hart(unsigned hartid) {
   sbi_printf("%s: hartid = %d size=%ld\n", __func__, hartid,
              sizeof(hart_table[hartid]));
+  /*
   hart_table[hartid].owner_hartid = 0;
   hart_table[hartid].mem_size = 0;
   hart_table[hartid].hartMask.bits[0] = 0;
+  */
+  memset(&hart_table[hartid], 0 , sizeof(hart_table[hartid]));
   return 0;
 }
 
@@ -356,6 +359,7 @@ static int _mpfs_domains_register_boot_hart(char *pName, u32 hartMask,
          ARRAY_SIZE(hart_table[boot_hartid].name) - 1);
   hart_table[boot_hartid].mem_size = mem_size;
   hart_table[boot_hartid].mem_start = mem_start;
+  sbi_hartmask_clear_all(&hart_table[boot_hartid].hartMask);
   hart_table[boot_hartid].hartMask.bits[0] = hartMask;
   u32 hartid;
   sbi_hartmask_for_each_hart(hartid, &hart_table[boot_hartid].hartMask) {
@@ -441,7 +445,9 @@ static int mpfs_domains_init(void) {
   sbi_printf("mpfs_domains_init\n");
   for (int hartid = 1; hartid < MAX_NUM_HARTS; hartid++) {
     const int boot_hartid = hart_table[hartid].owner_hartid;
-
+    if(boot_hartid >= array_size(dom_table) ){
+      continue;
+    }
     if (boot_hartid == hartid) {
       struct sbi_domain *const pDom = &dom_table[boot_hartid];
       pDom->regions = domain_regions[boot_hartid];
@@ -464,11 +470,9 @@ static int mpfs_domains_init(void) {
                strlen(hart_table[boot_hartid].uart_path));
         result = slice_create_full(&options);
       }
-    } else {
-      sbi_printf("%s(): boot_hart_id not set\n", __func__);
     }
   }
-
+  sbi_printf("end mpfs_domains_init\n");
   return result;
 }
 
