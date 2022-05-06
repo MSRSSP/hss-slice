@@ -28,6 +28,13 @@ config SERVICE_BOOT_DDR_SLICE_PRIVATE_START
         help
                 This feature specifies the slice_cfg only accessible to slice-0.
 
+config SERVICE_BOOT_DDR_TARGET_ADDR
+	hex "Target Base address for BOOT to DDR copy"
+	default 0xA2000000
+	depends on SERVICE_BOOT
+	help
+                This feature specifies a scratch address for EMMC/QSPI decompression
+
 config SERVICE_BOOT
 	def_bool y
 	select SERVICE_OPENSBI
@@ -60,13 +67,6 @@ config SERVICE_BOOT_CUSTOM_FLOW
         help
                 This feature enables custom booting flow where all HARTs
                 will jump to same entry point in M-mode.
-
-config SERVICE_BOOT_DDR_TARGET_ADDR
-	hex "Target Base address for BOOT to DDR copy"
-	default 0xA0002000
-	depends on SERVICE_BOOT
-	help
-                This feature specifies a scratch address for EMMC/QSPI decompression
 
 config SERVICE_BOOT_MMC_USE_GPT
         bool "Use GPT with MMC"
