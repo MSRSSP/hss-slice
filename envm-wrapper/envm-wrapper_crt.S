@@ -120,7 +120,9 @@ skip_config:
         j	.decompress_done
 
 .e51_decompress:
+#if !CONFIG_QEMU
 	call	config_l2_cache
+#endif
 	li	a0, 0
 	la	a1, decompress_done_flag
 	REG_S	a0, 0(a1)
@@ -151,7 +153,7 @@ skip_config:
 	REG_S	a0, 0(a1)
 
 	# a0 => pointer to destination (where to decompress to)
-	la	a0, __l2_start		# destination
+	la	a0, _hss_start		# destination
 	call 	mz_uncompress
 	j	.clear_progress
 

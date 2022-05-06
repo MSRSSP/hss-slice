@@ -151,9 +151,9 @@ bool HSS_DDRPrintL2CacheWaysConfig(void)
     extern const uint64_t _hss_end;
     const uintptr_t libero_l2_end = (uintptr_t)&__l2_start + (scratch_ways * 128u * 1024u);
 
-    assert(&_hss_start == &__l2_start);
-    assert((uintptr_t)&_hss_end <= libero_l2_end);
-
+    if(&_hss_start == &__l2_start){
+        assert((uintptr_t)&_hss_end <= libero_l2_end);
+    }
     return true;
 }
 
