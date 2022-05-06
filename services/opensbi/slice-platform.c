@@ -402,7 +402,7 @@ int init_slice_mem_regions(struct sbi_domain *pDom)
     sbi_printf("hartid =%d: fw init %lx %lx in dom %s\n", current_hartid(), pScratch->fw_start & ~((1UL << log2roundup(pScratch->fw_size)) - 1UL), log2roundup(pScratch->fw_size), pDom->name);
     init_slice_shared_mem(pDom->regions, count, &count);
     sbi_domain_memregion_init(pDom->next_addr & (~((1UL << 28) - 1)),
-                              pDom->dom_mem_size, ALL_PERM, &pDom->regions[count++]);
+                              pDom->slice_mem_size, ALL_PERM, &pDom->regions[count++]);
     if (count > DOMAIN_REGION_MAX_COUNT)
     {
         return SBI_EINVAL;
@@ -437,7 +437,7 @@ static int mpfs_domains_init(void)
                 pDom->next_arg1 = hart_table[boot_hartid].next_arg1;
                 pDom->next_addr = hart_table[boot_hartid].next_addr;
                 pDom->next_mode = hart_table[boot_hartid].next_mode;
-                pDom->dom_mem_size = hart_table[boot_hartid].mem_size;
+                pDom->slice_mem_size = hart_table[boot_hartid].mem_size;
                 pDom->system_reset_allowed = TRUE;
                 pDom->possible_harts = pMask;
                 pDom->slice_type = SLICE_TYPE_SLICE;
