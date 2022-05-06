@@ -1,6 +1,6 @@
 config SERVICE_BOOT_DDR_SLICE_0_MEM_START
         hex "Slice-0 Mem start"
-        default  0xa000000
+        default  0xa0000000
         help
                 This feature specifies the slice-0 mem start.
 
@@ -12,7 +12,7 @@ config SERVICE_BOOT_DDR_SLICE_0_MEM_ORDER
 
 config SERVICE_BOOT_DDR_SLICE_BUS_ADDR
         hex "shared mem between slice-0 and slice-k"
-        default  0xa000000
+        default  0xa0000000
         help
                 This feature specifies the slice-0 mem bus.
 
@@ -21,6 +21,12 @@ config SERVICE_BOOT_DDR_SLICE_BUS_SIZE
         default  0x1000
         help
                 This feature specifies the slice-0 mem bus size.
+
+config SERVICE_BOOT_DDR_SLICE_PRIVATE_START
+        hex "private mem for slice config"
+        default  0xa001000
+        help
+                This feature specifies the slice_cfg only accessible to slice-0.
 
 config SERVICE_BOOT
 	def_bool y
@@ -57,7 +63,7 @@ config SERVICE_BOOT_CUSTOM_FLOW
 
 config SERVICE_BOOT_DDR_TARGET_ADDR
 	hex "Target Base address for BOOT to DDR copy"
-	default 0xA0000000
+	default 0xA0002000
 	depends on SERVICE_BOOT
 	help
                 This feature specifies a scratch address for EMMC/QSPI decompression
