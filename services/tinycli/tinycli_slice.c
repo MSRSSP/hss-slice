@@ -163,7 +163,7 @@ void tinyCLI_Slice(size_t narg, const char **argv_tokenArray) {
       break;
     }
     case SLICE_DUMP: {
-      sbi_domain_dump_all("");
+      dump_slices_config("");
       break;
     }
     case SLICE_HW_RESET: {
