@@ -48,10 +48,7 @@ PLATFORM_CFLAGS += -DCONFIG_SLICE_SW_RESET=1
 endif
 ifeq ($(BOARD),slice)
 CONFIG_SLICE=y
-CONFIG_SOC_FPGA_DESIGN_XML="boards/$(BOARD)/soc_fpga_design/xml/ICICLE_MSS_mss_cfg.xml"
 PLATFORM_CFLAGS += -DCONFIG_SLICE=1 -DFW_PIC=y
-EXTRA_SRCS-y += \
-        $(BOARD_DIR)/slice_uart_helper.c
 else
 EXTRA_SRCS-y += \
         $(BOARD_DIR)/uart_helper.c
