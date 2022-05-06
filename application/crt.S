@@ -437,7 +437,7 @@ _trap_handler_all_mode:
 .checkIfOpenSBITrap:
 	add	a0, sp, zero
 	csrr	a1, CSR_MSCRATCH
-	call	sbi_trap_handler
+	#call	sbi_trap_handler
 
 .skipOpenSbi:
 	// Restore all general regisers except SP and T0
@@ -678,6 +678,8 @@ __slice_sbi_jump:
 .__slice_init:	
 	lla s2, boot_hartid
 	REG_S a0, (s2)
+	lla s3, _slice_fw_start
+	lla s4, _slice_fw_end
 _slice_init_done:
 	ret
 
@@ -689,6 +691,10 @@ _slice_sbi_boot:
 _runtime_offset:
 	RISCV_PTR	0
 #endif
+
+	.section .data
+	.align 8
+
 _load_start:
 	RISCV_PTR	0x8000000
 _link_start:
@@ -703,3 +709,19 @@ _relocate_lottery:
 	RISCV_PTR	0
 boot_hartid:
 	RISCV_PTR	0
+
+.section .text, "ax", @progbits
+	.option push
+	.option norelax
+	.align 4
+	.globl	_slice_fw_start
+_slice_fw_start:
+#ifndef CONFIG_QEMU
+	.incbin	"thirdparty/opensbi/build/platform/slice/firmware/slice_fw_dynamic.bin"
+#else
+	.incbin	"thirdparty/opensbi/build-qemu/platform/slice/firmware/slice_fw_dynamic.bin"
+#endif
+	.globl	_slice_fw_end
+_slice_fw_end:
+	RISCV_PTR	0
+

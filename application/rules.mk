@@ -57,16 +57,16 @@ CORE_CFLAGS+=$(MCMODEL) -mstrict-align
 CORE_CFLAGS+=-mabi=$(PLATFORM_RISCV_ABI) -march=$(PLATFORM_RISCV_ISA)
 
 # Debug options
-CORE_CFLAGS+=-g3 -DDEBUG -pipe -grecord-gcc-switches
+CORE_CFLAGS+=-Os -pipe -grecord-gcc-switches
 #CORE_CFLAGS+=-pipe
 
 
 # Warning / Code Quality
-CORE_CFLAGS+=-Wall -Werror -Wshadow -fno-builtin -fno-builtin-printf \
-   -fomit-frame-pointer -Wredundant-decls -Wall -Wundef -Wwrite-strings -fno-strict-aliasing \
-   -fno-common -Wendif-labels -Wmissing-include-dirs -Wempty-body -Wformat=2 -Wformat-security \
-   -Wformat-y2k -Winit-self -Wold-style-declaration -Wold-style-definition \
-   -Wtype-limits -Wimplicit-fallthrough=5
+CORE_CFLAGS+= -Wshadow -fno-builtin -fno-builtin-printf \
+   -fomit-frame-pointer -Wredundant-decls  -Wundef -Wwrite-strings -fno-strict-aliasing \
+   -fno-common -Wendif-labels -Wempty-body -Wformat=2 -Wformat-security \
+   -Wformat-y2k -Winit-self -Wold-style-declaration  \
+   -Wtype-limits 
 
 CORE_CFLAGS+=-mno-fdiv
 # CORE_CFLAGS+=-fanalyzer

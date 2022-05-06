@@ -280,7 +280,9 @@ __attribute__((weak)) uint64_t strtoul(const char * restrict nptr, char ** restr
             break;
 
         case 'x':
-            if ((count != 1) || (base != 16)) {
+            if(result == 0 && count == 1 && base == 0){
+                base = 16;
+            }else if ((count != 1) || (base != 16)) {
                 done = true;
             }
             break;

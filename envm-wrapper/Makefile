@@ -49,7 +49,14 @@ LINKER_SCRIPT-envm-wrapper = envm-wrapper/envm-wrapper.ld
 
 COMPRESSED_TARGET=$(BINDIR)/$(TARGET-l2scratch:.elf=.bin.deflate)
 
-envm-wrapper/envm-wrapper_crt.o: $(COMPRESSED_TARGET) 
+COMPRESSED_TARGETS += $(COMPRESSED_TARGET)
+COMPRESSED_TARGETS += thirdparty/opensbi/build/platform/slice/firmware/slice_fw_dynamic.bin.deflate
+envm-wrapper/envm-wrapper_crt.o: envm-wrapper/envm-wrapper_crt.S $(COMPRESSED_TARGET)
+envm-wrapper/envm-wrapper_stubs.o: CFLAGS=$(CFLAGS_GCCEXT)
+envm-wrapper/envm-wrapper_stubs.o: envm-wrapper/envm-wrapper_stubs.c
+envm-wrapper/uart_helper.o: envm-wrapper/uart_helper.c
+envm-wrapper/envm-wrapper_validate_crc.o: CFLAGS=$(CFLAGS_GCCEXT)
+envm-wrapper/envm-wrapper_validate_crc.o: envm-wrapper/envm-wrapper_validate_crc.c
 thirdparty/miniz/miniz.o: CFLAGS=$(CFLAGS_GCCEXT) -DMINIZ_NO_STDIO -DMINIZ_NO_TIME
 envm-wrapper/envm-wrapper_validate_crc.o: CFLAGS=$(CFLAGS_GCCEXT)
 
@@ -69,7 +76,7 @@ ifneq ($(MPFS_BOOTMODE_PROGRAMMER_VERSION),$(EXPECTED_MPFS_BOOTMODE_PROGRAMMER_V
 endif
 
 $(TARGET-envm-wrapper): LIBS:=
-$(TARGET-envm-wrapper): $(COMPRESSED_TARGET) $(OBJS-envm-wrapper)
+$(TARGET-envm-wrapper): $(COMPRESSED_TARGETS) $(OBJS-envm-wrapper)
 	$(call main-build-target,envm-wrapper)
 	@$(ECHO) " BIN       `basename $@ .elf`.bin"
 	$(OBJCOPY) -O binary $(BINDIR)/$@ $(BINDIR)/`basename $@ .elf`.bin
@@ -81,6 +88,10 @@ $(TARGET-envm-wrapper): $(COMPRESSED_TARGET) $(OBJS-envm-wrapper)
 $(COMPRESSED_TARGET): $(BINDIR)/$(TARGET-l2scratch:.elf=.bin) $(COMPRESS)
 	@$(ECHO) " COMPRESS  $<"
 	$(PYTHON) $(COMPRESS) $< $@
+
+%.bin.deflate: %.bin $(COMPRESS)
+	@$(ECHO) " COMPRESS  $<"
+	$(CMD_PREFIX)$(PYTHON) $(COMPRESS) $< $@
 
 envm-wrapper_clean:
 	-$(RM) $(COMPRESSED_TARGET) $(OBJS-envm-wrapper) $(BINDIR)/$(TARGET-envm-wrapper) $(BINDIR)/`basename $(TARGET-envm-wrapper) .elf`.sym $(BINDIR)/`basename $(TARGET-envm-wrapper) .elf`.bin

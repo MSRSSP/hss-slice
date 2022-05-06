@@ -63,9 +63,9 @@ void hss_main(void);
 
 void hss_main(void)
 {
-    if (IS_ENABLED(CONFIG_SERVICE_WDOG)) {
+    #if IS_ENABLED(CONFIG_SERVICE_WDOG)
         HSS_Wdog_MonitorHart(HSS_HART_ALL);
-    }
+    #endif
 
     while (true) {
         RunStateMachines(spanOfPGlobalStateMachines, pGlobalStateMachines);

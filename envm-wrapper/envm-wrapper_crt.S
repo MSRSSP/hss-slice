@@ -82,12 +82,18 @@ _start:
 	csrw	CSR_MSCRATCH, 0
 
 .configure:
-	li	a0, 0
+	csrr	a0, CSR_MHARTID
 	la	a1, decompress_done_flag
-	REG_S	a0, 0(a1)
-
+	REG_L a2, 0(a1)
+	li a3, 1
+	beqz a0, do_config
+	beq a2, a3, skip_config
+do_config: 
+	li	a4, 0
+	REG_S	a4, 0(a1)
+skip_config:
 	la	s8, STACK_SIZE_PER_HART
-        csrr	a0, CSR_MHARTID
+        
 
         la	tp, __stack_bottom + 63
         and	tp, tp, -64
@@ -109,7 +115,8 @@ _start:
 .wait_for_decompress_done:
 	la	a1, decompress_done_flag
 	REG_L	a0, 0(a1)
-	beqz	a0, .wait_for_decompress_done
+	li a2, 1
+	bne	a0, a2, .wait_for_decompress_done
         j	.decompress_done
 
 .e51_decompress:
@@ -353,5 +360,6 @@ decompressed_size:
 	.data
 decompress_done_flag:
 	.int	0
-
+	.align 4
+	.data
 	.option pop

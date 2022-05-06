@@ -1,4 +1,4 @@
-#
+#in
 # MPFS HSS Embedded Software
 #
 # Copyright 2019-2021 Microchip Corporation.
@@ -128,6 +128,7 @@ $(TARGET-l2scratch): $(OBJS) $(EXTRA_OBJS) config.h  $(DEPENDENCIES) $(LINKER_SC
 	$(ECHO) " BIN       `basename $@ .elf`.bin"
 	$(OBJCOPY) -O binary $(BINDIR)/$@ $(BINDIR)/`basename $@ .elf`.bin
 	$(SIZE) $(BINDIR)/$(TARGET-l2scratch) 2>/dev/null
+
 
 $(BINDIR)/$(TARGET-envm): $(TARGET-envm)
 $(BINDIR)/$(TARGET-l2scratch): $(TARGET-l2scratch)

@@ -140,9 +140,9 @@ bool HSS_DDRPrintL2CacheWaysConfig(void)
     assert(way_enable <= 16u);
     assert(cache_ways <= 16u);
 
-    mHSS_DEBUG_PRINTF_EX("    L2-Scratchpad: % 2u way%c (%u KiB)" CRLF, scratch_ways, scratch_ways==1u ? ' ':'s', scratch_ways * 128u);
-    mHSS_DEBUG_PRINTF_EX("         L2-Cache: % 2u way%c (%u KiB)" CRLF, cache_ways, cache_ways==1u ? ' ':'s', cache_ways * 128u);
-    mHSS_DEBUG_PRINTF_EX("           L2-LIM: % 2u way%c (%u KiB)" CRLF, lim_ways, lim_ways==1 ? ' ':'s', lim_ways * 128);
+    mHSS_DEBUG_PRINTF_EX("    L2-Scratchpad: way %d (%u KiB)" CRLF, scratch_ways, scratch_ways==1u ? ' ':'s', scratch_ways * 128u);
+    mHSS_DEBUG_PRINTF_EX("         L2-Cache: way%d (%u KiB)" CRLF, cache_ways, cache_ways==1u ? ' ':'s', cache_ways * 128u);
+    mHSS_DEBUG_PRINTF_EX("           L2-LIM: way%d (%u KiB)" CRLF, lim_ways, lim_ways==1 ? ' ':'s', lim_ways * 128);
 
     // sanity check on L2 Size and LIM size...
     // to ensure Libero and the HSS linker script match
