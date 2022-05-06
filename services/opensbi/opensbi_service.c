@@ -41,6 +41,7 @@
 #include "sbi/sbi_platform.h"
 #include "sbi/sbi_ipi.h"
 #include "sbi/riscv_atomic.h"
+#include "slice/slice_reset.h"
 
 #if !IS_ENABLED(CONFIG_OPENSBI)
 #  error OPENSBI needed for this module
@@ -168,6 +169,7 @@ extern unsigned long _trap_handler;
 
 int sbi_console_init(struct sbi_scratch *scratch);
 
+#define RESET_BASE_ADDR 0x100000
 void HSS_OpenSBI_Setup(void)
 {
     enum HSSHartId hartid = current_hartid();
@@ -177,7 +179,7 @@ void HSS_OpenSBI_Setup(void)
         mstatus_val = EXTRACT_FIELD(mstatus_val, MSTATUS_MPIE);
         mHSS_CSR_WRITE(CSR_MSTATUS, mstatus_val);
         mHSS_CSR_WRITE(CSR_MIE, 0u);
-
+        d_reset_init(RESET_BASE_ADDR);
         opensbi_scratch_setup(hartid);
 
         int rc = sbi_console_init(&(pScratches[hartid].scratch));
