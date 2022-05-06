@@ -62,19 +62,26 @@ static unsigned long l_hartid_to_scratch(int hartid);
 union t_HSS_scratchBuffer {
     struct sbi_scratch scratch;
     unsigned long buffer[SBI_SCRATCH_SIZE / __SIZEOF_POINTER__];
+#if IS_ENABLED(CONFIG_QEMU)
+} scratches[MAX_NUM_HARTS];
+#else
 } scratches[MAX_NUM_HARTS] __attribute__((section(".l2_scratchpad"),used));
 //} scratches[MAX_NUM_HARTS] __attribute__((section(".opensbi_scratch")));
 
 asm(".align 3\n"
 	"scratch_addr: .quad scratches\n");
+#endif
 extern const size_t scratch_addr;
 union t_HSS_scratchBuffer *pScratches = 0;
 
 static void opensbi_scratch_setup(enum HSSHartId hartid)
 {
     assert(hartid < MAX_NUM_HARTS);
-
+    #if IS_ENABLED(CONFIG_QEMU)
+    pScratches = (union t_HSS_scratchBuffer * const)scratches;
+    #else
     pScratches = (union t_HSS_scratchBuffer * const)scratch_addr;
+    #endif
     pScratches[hartid].scratch.options = SBI_SCRATCH_DEBUG_PRINTS;
     pScratches[hartid].scratch.hartid_to_scratch = (unsigned long)l_hartid_to_scratch;
     pScratches[hartid].scratch.platform_addr = (unsigned long)&platform;
@@ -235,14 +242,17 @@ enum IPIStatusCode HSS_OpenSBI_IPIHandler(TxId_t transaction_id, enum HSSHartId 
         if (result != IPI_FAIL) {
             csr_write(mscratch, &(pScratches[hartid].scratch));
 
-            pScratches[hartid].scratch.next_addr = (uintptr_t)p_extended_buffer;
-            pScratches[hartid].scratch.next_mode = (unsigned long)immediate_arg;
-
-            // set arg1 (A1) to point to override device tree blob, if provided
+            if(p_extended_buffer){
+                pScratches[hartid].scratch.next_addr = (uintptr_t)p_extended_buffer;
+            }
+            if(!pScratches[hartid].scratch.next_mode){
+                pScratches[hartid].scratch.next_mode = (unsigned long)immediate_arg;
+            }
+        // set arg1 (A1) to point to override device tree blob, if provided
 #if IS_ENABLED(CONFIG_PROVIDE_DTB)
 #  if IS_ENABLED(CONFIG_PLATFORM_MPFS)
             extern unsigned long _binary_services_opensbi_mpfs_dtb_start;
-            scratches[hartid].scratch.next_arg1 = (unsigned long)&_binary_services_opensbi_mpfs_dtb_start;
+            pScratches[hartid].scratch.next_arg1 = (unsigned long)&_binary_services_opensbi_mpfs_dtb_start;
 #  elif IS_ENABLED(CONFIG_PLATFORM_FU540)
             extern unsigned long _binary_hifive_unleashed_a00_dtb_start;
             pScratches[hartid].scratch.next_arg1 = (unsigned long)&_binary_hifive_unleashed_a00_dtb_start;
@@ -251,8 +261,10 @@ enum IPIStatusCode HSS_OpenSBI_IPIHandler(TxId_t transaction_id, enum HSSHartId 
 #  endif
 #else
             // else use ancilliary data if provided in boot image, assuming it is a DTB
-            scratches[hartid].scratch.next_arg1 = (uintptr_t)p_ancilliary_buffer_in_ddr;
 #endif
+            if(p_ancilliary_buffer_in_ddr){
+                pScratches[hartid].scratch.next_arg1 = (uintptr_t)p_ancilliary_buffer_in_ddr;
+            }
             HSS_OpenSBI_DoBoot(hartid);
         }
     }

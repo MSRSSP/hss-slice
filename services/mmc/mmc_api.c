@@ -255,6 +255,9 @@ bool HSS_MMCInit(void)
 //
 static char runtBuffer[HSS_MMC_SECTOR_SIZE] __attribute__((aligned(sizeof(uint32_t))));
 
+#define SIZE_32MB                       0x02000000U
+
+#define MAX_SDMA_SIZE (SIZE_32MB - HSS_MMC_SECTOR_SIZE)
 bool HSS_MMC_ReadBlock(void *pDest, size_t srcOffset, size_t byteCount)
 {
     char *pCDest = (char *)pDest;
@@ -264,7 +267,62 @@ bool HSS_MMC_ReadBlock(void *pDest, size_t srcOffset, size_t byteCount)
     uint32_t src_sector_num = (uint32_t)(srcOffset / HSS_MMC_SECTOR_SIZE);
     mss_mmc_status_t result = MSS_MMC_TRANSFER_SUCCESS;
     uint32_t sectorByteCount = byteCount - (byteCount % HSS_MMC_SECTOR_SIZE);
+    size_t nRound=1;
 
+    //Check whether to do multiple SDMAs.
+    nRound = 1 + (byteCount-1)/MAX_SDMA_SIZE;
+
+    if(nRound>1){
+        result = HSS_MMC_ReadBlock(pDest, srcOffset, MAX_SDMA_SIZE);
+        if(result == true){
+            result = HSS_MMC_ReadBlock(pDest + MAX_SDMA_SIZE, srcOffset+MAX_SDMA_SIZE, byteCount-MAX_SDMA_SIZE);
+        }
+        return result;
+    }
+#if IS_ENABLED(CONFIG_QEMU)
+     while ((result == MSS_MMC_TRANSFER_SUCCESS) && (byteCount >= HSS_MMC_SECTOR_SIZE)) {
+        //mHSS_DEBUG_PRINTF(LOG_NORMAL, "Calling MSS_MMC_single_block_read(%lu, 0x%p) "
+        //    "(%lu bytes remaining)" CRLF, src_sector_num, pCDest, byteCount);
+
+        result = MSS_MMC_single_block_read(src_sector_num, (uint32_t *)pCDest);
+
+        if (result != MSS_MMC_TRANSFER_SUCCESS) {
+            mHSS_DEBUG_PRINTF(LOG_ERROR, "MSS_MMC_single_block_read() unexpectedly returned %d" CRLF,
+                result);
+        }
+
+        if (result == MSS_MMC_TRANSFER_SUCCESS) {
+            src_sector_num++;
+            pCDest = pCDest + HSS_MMC_SECTOR_SIZE;
+
+            if (byteCount < HSS_MMC_SECTOR_SIZE) {
+                ;
+            } else {
+                byteCount = byteCount - HSS_MMC_SECTOR_SIZE;
+            }
+        }
+    }
+
+    // handle remainder
+    if ((result == MSS_MMC_TRANSFER_SUCCESS) && byteCount) {
+        assert(byteCount < HSS_MMC_SECTOR_SIZE);
+
+        //mHSS_DEBUG_PRINTF(LOG_NORMAL, "Dealing with remainder (less that full sector)" CRLF);
+        //mHSS_DEBUG_PRINTF(LOG_NORMAL, "Calling MSS_MMC_single_block_read(%lu, 0x%p) "
+        //    "(%lu bytes remaining)" CRLF, src_sector_num, runtBuffer, byteCount);
+
+        result = MSS_MMC_single_block_read(src_sector_num, (uint32_t *)runtBuffer);
+
+        if (result != MSS_MMC_TRANSFER_SUCCESS) {
+            mHSS_DEBUG_PRINTF(LOG_ERROR, "MSS_MMC_single_block_read() unexpectedly returned %d" CRLF,
+                result);
+        }
+
+        if (result == MSS_MMC_TRANSFER_SUCCESS) {
+            memcpy(pCDest, runtBuffer, byteCount);
+        }
+    }
+#else
     do {
         result = mmc_main_plic_IRQHandler();
     } while (MSS_MMC_TRANSFER_IN_PROGRESS == result);
@@ -303,6 +361,7 @@ bool HSS_MMC_ReadBlock(void *pDest, size_t srcOffset, size_t byteCount)
         }
     }
 
+#endif
     return (result == MSS_MMC_TRANSFER_SUCCESS);
 }
 

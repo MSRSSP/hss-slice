@@ -71,6 +71,7 @@ CORE_CFLAGS+=-Wall -Werror -Wshadow -fno-builtin -fno-builtin-printf \
 CORE_CFLAGS+=-mno-fdiv
 # CORE_CFLAGS+=-fanalyzer
 CORE_CFLAGS+=-fms-extensions
+CORE_CFLAGS+=-nostdlib
 # Compiler hooks to enable link-time garbage collection
 CORE_CFLAGS+=-ffunction-sections -fdata-sections
 

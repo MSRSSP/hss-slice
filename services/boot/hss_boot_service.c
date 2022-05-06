@@ -28,7 +28,6 @@
 #include <string.h>
 
 #include "mpfs_reg_map.h"
-
 #if IS_ENABLED(CONFIG_OPENSBI)
 #  include "sbi/riscv_asm.h"
 #  include "sbi/sbi_bitops.h"
@@ -59,7 +58,7 @@
 #define BOOT_SETUP_PMP_COMPLETE_TIMEOUT (ONE_SEC * 5u)
 #define BOOT_WAIT_TIMEOUT               (ONE_SEC * 2u)
 
-#define BOOT_SUB_CHUNK_SIZE 256u
+//#define BOOT_SUB_CHUNK_SIZE 256u
 
 /*
  * Module Prototypes (states)
@@ -373,7 +372,7 @@ static void boot_setup_pmp_onEntry(struct StateMachine * const pMyMachine)
                 pInstanceData->hartMask, target,
                 pBootImage->hart[target-1].privMode,
                 (void *)pBootImage->hart[target-1].entryPoint,
-                (void *)pInstanceData->ancilliaryData);
+                (void *)pBootImage->hart[target-1].arg);
         }
     }
 }
@@ -533,7 +532,10 @@ static void boot_download_chunks_handler(struct StateMachine * const pMyMachine)
                     && (!pInstanceData->ancilliaryData)) {
                     mHSS_DEBUG_PRINTF(LOG_NORMAL, "%s::%d:ancilliary data found at 0x%x" CRLF,
                         pMyMachine->pMachineName, pInstanceData->chunkCount, pChunk->execAddr);
-                    pInstanceData->ancilliaryData = pChunk->execAddr;
+                    if(pBootImage->hart[target-1].arg != pChunk->execAddr){
+                        memcpy((void*)pBootImage->hart[target-1].arg, (void*)pChunk->execAddr, pChunk->size);
+                    }
+                    pInstanceData->ancilliaryData = pBootImage->hart[target-1].arg;
                 }
 
 #ifdef BOOT_SUB_CHUNK_SIZE

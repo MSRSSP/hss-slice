@@ -196,10 +196,12 @@ bool HSS_DDRPrintL2CacheWayMasks(void)
 bool HSS_DDRInit(void)
 {
 #if IS_ENABLED(CONFIG_PLATFORM_MPFS)
+#if !CONFIG_QEMU
     int perf_ctr_index = PERF_CTR_UNINITIALIZED;
     HSS_PerfCtr_Allocate(&perf_ctr_index, "NWC Init");
     assert(mss_nwc_init() == 0);
     HSS_PerfCtr_Lap(perf_ctr_index);
+#endif
 #endif
 
     return true;

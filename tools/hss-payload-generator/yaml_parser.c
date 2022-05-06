@@ -81,6 +81,7 @@ enum token
 	TOKEN_UNKNOWN = 0,
 	TOKEN_SET_NAME,
 	TOKEN_HART_ENTRY_POINTS,
+	TOKEN_HART_ARG,
 	TOKEN_PAYLOADS,
 	TOKEN_PAYLOAD_EXEC_ADDR,
 	TOKEN_PAYLOAD_OWNER_HART,
@@ -107,6 +108,7 @@ struct hss_config_token
 const struct hss_config_token tokens[] = {
 	{ TOKEN_SET_NAME,			"set-name" },
 	{ TOKEN_HART_ENTRY_POINTS,		"hart-entry-points" },
+	{ TOKEN_HART_ARG,			"hart-args" },
 	{ TOKEN_PAYLOADS,			"payloads" },
 	{ TOKEN_PAYLOAD_EXEC_ADDR,		"exec-addr" },
 	{ TOKEN_PAYLOAD_OWNER_HART,		"owner-hart" },
@@ -135,6 +137,11 @@ enum ParserState
 	STATE_HART_ENTRY_POINTS_U54_2,
 	STATE_HART_ENTRY_POINTS_U54_3,
 	STATE_HART_ENTRY_POINTS_U54_4,
+	STATE_HART_ARG,
+	STATE_HART_ARG_U54_1,
+	STATE_HART_ARG_U54_2,
+	STATE_HART_ARG_U54_3,
+	STATE_HART_ARG_U54_4,
 	STATE_PAYLOAD_MAPPINGS,
 	STATE_NEW_PAYLOAD,
 	STATE_NEW_PAYLOAD_EXEC_ADDR,
@@ -157,6 +164,11 @@ const char * const stateNames[] =
 	[ STATE_HART_ENTRY_POINTS_U54_2 ] =	"STATE_HART_ENTRY_POINTS_U54_2",
 	[ STATE_HART_ENTRY_POINTS_U54_3 ] =	"STATE_HART_ENTRY_POINTS_U54_3",
 	[ STATE_HART_ENTRY_POINTS_U54_4 ] =	"STATE_HART_ENTRY_POINTS_U54_4",
+	[ STATE_HART_ARG ] =		"STATE_HART_ARG",
+	[ STATE_HART_ARG_U54_1 ] =	"STATE_HART_ARG_U54_1",
+	[ STATE_HART_ARG_U54_2 ] =	"STATE_HART_ARG_U54_2",
+	[ STATE_HART_ARG_U54_3 ] =	"STATE_HART_ARG_U54_3",
+	[ STATE_HART_ARG_U54_4 ] =	"STATE_HART_ARG_U54_4",
 	[ STATE_PAYLOAD_MAPPINGS ] =		"STATE_PAYLOAD_MAPPINGS",
 	[ STATE_NEW_PAYLOAD ] =			"STATE_NEW_PAYLOAD",
 	[ STATE_NEW_PAYLOAD_EXEC_ADDR ] =	"STATE_NEW_PAYLOAD_EXEC_ADDR",
@@ -196,6 +208,13 @@ static void Handle_STATE_HART_ENTRY_POINTS_U54_1(yaml_event_t *pEvent)		__attrib
 static void Handle_STATE_HART_ENTRY_POINTS_U54_2(yaml_event_t *pEvent)		__attribute__((nonnull));
 static void Handle_STATE_HART_ENTRY_POINTS_U54_3(yaml_event_t *pEvent)		__attribute__((nonnull));
 static void Handle_STATE_HART_ENTRY_POINTS_U54_4(yaml_event_t *pEvent)		__attribute__((nonnull));
+static void Handle_STATE_HART_ARG(yaml_event_t *pEvent)		__attribute__((nonnull));
+static void Handle_STATE_HART_ARG_U54_X(yaml_event_t *pEvent, unsigned hartid)		__attribute__((nonnull));
+static void Handle_STATE_HART_ARG_U54_1(yaml_event_t *pEvent)		__attribute__((nonnull));
+static void Handle_STATE_HART_ARG_U54_2(yaml_event_t *pEvent)		__attribute__((nonnull));
+static void Handle_STATE_HART_ARG_U54_3(yaml_event_t *pEvent)		__attribute__((nonnull));
+static void Handle_STATE_HART_ARG_U54_4(yaml_event_t *pEvent)		__attribute__((nonnull));
+
 static void Handle_STATE_PAYLOAD_MAPPINGS(yaml_event_t *pEvent)			__attribute__((nonnull));
 static void Handle_STATE_NEW_PAYLOAD(yaml_event_t *pEvent)			__attribute__((nonnull));
 static void Handle_STATE_NEW_PAYLOAD_EXEC_ADDR(yaml_event_t *pEvent)		__attribute__((nonnull));
@@ -226,6 +245,11 @@ static struct StateHandler stateHandler[] = {
 	{ STATE_HART_ENTRY_POINTS_U54_2,	Handle_STATE_HART_ENTRY_POINTS_U54_2 },
 	{ STATE_HART_ENTRY_POINTS_U54_3,	Handle_STATE_HART_ENTRY_POINTS_U54_3 },
 	{ STATE_HART_ENTRY_POINTS_U54_4,	Handle_STATE_HART_ENTRY_POINTS_U54_4 },
+	{ STATE_HART_ARG,		Handle_STATE_HART_ARG},
+	{ STATE_HART_ARG_U54_1,	Handle_STATE_HART_ARG_U54_1 },
+	{ STATE_HART_ARG_U54_2,	Handle_STATE_HART_ARG_U54_2 },
+	{ STATE_HART_ARG_U54_3,	Handle_STATE_HART_ARG_U54_3 },
+	{ STATE_HART_ARG_U54_4,	Handle_STATE_HART_ARG_U54_4 },
 	{ STATE_PAYLOAD_MAPPINGS,		Handle_STATE_PAYLOAD_MAPPINGS },
 	{ STATE_NEW_PAYLOAD,			Handle_STATE_NEW_PAYLOAD },
 	{ STATE_NEW_PAYLOAD_EXEC_ADDR,		Handle_STATE_NEW_PAYLOAD_EXEC_ADDR },
@@ -413,7 +437,10 @@ static void Handle_STATE_MAPPING(yaml_event_t *pEvent)
 			debug_printf(0, "Parsing hart entry points\n");
 			Do_State_Transition(STATE_HART_ENTRY_POINTS);
 			break;
-
+		case TOKEN_HART_ARG:
+			debug_printf(0, "Parsing hart arg points\n");
+			Do_State_Transition(STATE_HART_ARG);
+			break;
 		case TOKEN_PAYLOADS:
 			Do_State_Transition(STATE_PAYLOAD_MAPPINGS);
 			break;
@@ -459,6 +486,7 @@ static void Handle_STATE_SET_NAME(yaml_event_t *pEvent)
 		break;
 	}
 }
+
 static void Handle_STATE_HART_ENTRY_POINTS(yaml_event_t *pEvent)
 {
 	assert(pEvent);
@@ -505,6 +533,96 @@ static void Handle_STATE_HART_ENTRY_POINTS(yaml_event_t *pEvent)
 		break;
 	}
 }
+
+static void Handle_STATE_HART_ARG(yaml_event_t *pEvent)
+{
+	assert(pEvent);
+
+	enum token token_idx = TOKEN_UNKNOWN;
+
+	switch (pEvent->type) {
+	case YAML_MAPPING_START_EVENT:
+		break;
+
+	case YAML_MAPPING_END_EVENT:
+		Do_State_Transition(STATE_MAPPING);
+		break;
+
+	case YAML_SCALAR_EVENT:
+		token_idx = string_to_scalar(pEvent->data.scalar.value);
+		switch (token_idx) {
+		case TOKEN_HART_U54_1:
+			Do_State_Transition(STATE_HART_ARG_U54_1);
+			break;
+
+		case TOKEN_HART_U54_2:
+			Do_State_Transition(STATE_HART_ARG_U54_2);
+			break;
+
+		case TOKEN_HART_U54_3:
+			Do_State_Transition(STATE_HART_ARG_U54_3);
+			break;
+
+		case TOKEN_HART_U54_4:
+			Do_State_Transition(STATE_HART_ARG_U54_4);
+			break;
+
+		default:
+			report_illegal_token(stateNames[parser_state], pEvent);
+			exit(EXIT_FAILURE);
+			break;
+		}
+		break;
+
+	default:
+		report_illegal_event(stateNames[parser_state], pEvent);
+		exit(EXIT_FAILURE);
+		break;
+	}
+}
+
+static void Handle_STATE_HART_ARG_U54_X(yaml_event_t *pEvent, unsigned hartid)
+{
+	assert(pEvent);
+
+	uintptr_t arg;
+
+	switch (pEvent->type) {
+	case YAML_MAPPING_START_EVENT:
+		break;
+
+	case YAML_MAPPING_END_EVENT:
+		Do_State_Transition(STATE_MAPPING);
+		break;
+
+	case YAML_SCALAR_EVENT:
+		arg = (uintptr_t)strtoul((char *)pEvent->data.scalar.value, NULL, 0);
+		bootImage.hart[hartid-1].arg = arg;
+
+		debug_printf(1, "\nArg Point U54_%d is %p\n", hartid, (void *)arg);
+		Do_State_Transition(STATE_HART_ARG);
+		break;
+
+	default:
+		report_illegal_event(stateNames[parser_state], pEvent);
+		exit(EXIT_FAILURE);
+		break;
+	}
+}
+
+static void Handle_STATE_HART_ARG_U54_1(yaml_event_t *pEvent){
+	Handle_STATE_HART_ARG_U54_X(pEvent, 1);
+}
+static void Handle_STATE_HART_ARG_U54_2(yaml_event_t *pEvent){
+	Handle_STATE_HART_ARG_U54_X(pEvent, 2);
+}
+static void Handle_STATE_HART_ARG_U54_3(yaml_event_t *pEvent){
+	Handle_STATE_HART_ARG_U54_X(pEvent, 3);
+}
+static void Handle_STATE_HART_ARG_U54_4(yaml_event_t *pEvent){
+	Handle_STATE_HART_ARG_U54_X(pEvent, 4);
+}
+
 
 static void Handle_STATE_HART_ENTRY_POINTS_U54_1(yaml_event_t *pEvent)
 {
@@ -624,6 +742,7 @@ static void Handle_STATE_HART_ENTRY_POINTS_U54_4(yaml_event_t *pEvent)
 
 static char base_name[BOOT_IMAGE_MAX_NAME_LEN];
 static uintptr_t base_exec_addr = 0u;
+
 static size_t base_owner = 0u;
 static size_t base_secondary[3] = { 0u, 0u, 0u };
 static uint8_t base_priv_mode = PRV_ILLEGAL;
@@ -1000,8 +1119,8 @@ static void Handle_STATE_NEW_PAYLOAD_ANCILLIARY_DATA(yaml_event_t *pEvent)
 
         case YAML_SCALAR_EVENT:
 		debug_printf(0, "Parsing ancilliary payload >>%s<<\n", pEvent->data.scalar.value);
-		strncpy(ancilliary_name, (char *)pEvent->data.scalar.value, BOOT_IMAGE_MAX_NAME_LEN-2);
-		ancilliary_name[BOOT_IMAGE_MAX_NAME_LEN-1] = '\0';
+		strncpy(ancilliary_name, (char *)pEvent->data.scalar.value, BOOT_IMAGE_MAX_NAME_LEN-8-2);
+		ancilliary_name[BOOT_IMAGE_MAX_NAME_LEN-1-8] = '\0';
 
 		Do_State_Transition(STATE_NEW_PAYLOAD);
                 break;

@@ -191,7 +191,8 @@ struct HSS_BootImage {
         size_t numChunks;
         size_t firstChunk;
         size_t lastChunk;
-        char name[BOOT_IMAGE_MAX_NAME_LEN];
+        char name[BOOT_IMAGE_MAX_NAME_LEN-8];
+        uintptr_t arg;
     } hart[MAX_NUM_HARTS-1]; // E51 is not counted, only U54s
     char set_name[BOOT_IMAGE_MAX_NAME_LEN];
     size_t bootImageLength;
