@@ -133,7 +133,7 @@ bool HSS_DDRPrintL2CacheWaysConfig(void)
 
     const unsigned int way_enable = CACHE_CTRL->WAY_ENABLE + 1u;
     const unsigned int way_mask = (1u << way_enable) - 1u;
-    const unsigned int cache_ways = __builtin_popcount(CACHE_CTRL->WAY_MASK_E51_DCACHE & way_mask);
+    const unsigned int cache_ways = __popcountdi2(CACHE_CTRL->WAY_MASK_E51_DCACHE & way_mask);
     const unsigned int scratch_ways = way_enable - cache_ways;
     const unsigned int lim_ways =  (unsigned int)(16u - way_enable);
 
