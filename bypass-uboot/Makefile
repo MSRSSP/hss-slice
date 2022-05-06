@@ -5,7 +5,7 @@ else
 endif
 
 DTS_DIR := dts
-EXAMPLE := single
+EXAMPLE := slice
 payload_config := conf/$(EXAMPLE)/config.yaml
 hss_payload_generator := $(BUILD_DIR)/hss-payload-generator
 hss_payload_bin := $(BUILD_DIR)/$(EXAMPLE)-payload.bin
