@@ -65,8 +65,8 @@ INCLUDES += \
 	-Ibaremetal/polarfire-soc-bare-metal-library/src/platform \
 
 EXTRA_SRCS-y += \
-	$(BOARD_DIR)/hss_uart_init.c \
-        $(BOARD_DIR)/hss_board_init.c 
+	$(BOARD_DIR)/hss_board_init.c 
+
 
 EXTRA_SRCS-$(CONFIG_USE_LOGO) += \
         init/hss_logo_init.c
