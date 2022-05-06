@@ -32,7 +32,7 @@
 #
 $(info mpfs-icicle-kit-es selected)
 
-BINDIR=Default
+BINDIR ?= Default
 TARGET-l2scratch=hss-l2scratch.elf
 TARGET-envm-wrapper=hss-envm-wrapper.elf
 RISCV_TARGET=$(TARGET-l2scratch) $(TARGET-envm-wrapper)
@@ -42,7 +42,16 @@ LINKER_SCRIPT-l2scratch=boards/${BOARD}/hss-l2scratch.ld
 
 CONFIG_PLATFORM_MPFS=y
 PLATFORM_CFLAGS += -DCONFIG_PLATFORM_MPFS=1
-BOARD_DIR=boards/mpfs-icicle-kit-es
+CONFIG_PLATFORM_MPFS=y
+ifeq ($(ENV), QEMU)
+PLATFORM_CFLAGS += -DCONFIG_QEMU=1
+EXTRA_SRCS-y += \
+        $(BOARD_DIR)/slice_uart_helper.c
+else
+EXTRA_SRCS-y += \
+        $(BOARD_DIR)/uart_helper.c
+endif
+BOARD_DIR=boards/$(BOARD)
 
 INCLUDES += \
 	-I$(BOARD_DIR)/mpfs_hal_config/\
@@ -52,8 +61,7 @@ INCLUDES += \
 
 EXTRA_SRCS-y += \
 	$(BOARD_DIR)/hss_uart_init.c \
-        $(BOARD_DIR)/uart_helper.c \
-        $(BOARD_DIR)/hss_board_init.c \
+        $(BOARD_DIR)/hss_board_init.c 
 
 EXTRA_SRCS-$(CONFIG_USE_LOGO) += \
         init/hss_logo_init.c

@@ -29,6 +29,10 @@
 
 SHELL=/bin/sh
 
+ifeq ($(ENV), QEMU)
+	BINDIR := Default-qemu
+endif
+
 #
 # To build the HSS under SoftConsole on Windows, we need to use SoftConsole-provided
 # tools, and potentially to modify paths

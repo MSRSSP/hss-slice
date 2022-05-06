@@ -243,6 +243,7 @@ init_memory:
 	call	copy_section
 */
 
+
         //
         // Clear zero-init memory
         //  (SBSS and BSS sections)
@@ -336,7 +337,11 @@ config_copy:
 	.align 4
 	.globl	hss_l2scratch_lz
 hss_l2scratch_lz:
+#ifdef CONFIG_QEMU
+	.incbin	"Default-qemu/hss-l2scratch.bin.deflate"
+#else
 	.incbin	"Default/hss-l2scratch.bin.deflate"
+#endif
 
 	.section .data
 	.align 8
