@@ -60,13 +60,16 @@ libsbi-objs-y += sbi_scratch.o
 libsbi-objs-y += sbi_string.o
 libsbi-objs-y += sbi_system.o
 libsbi-objs-y += sbi_timer.o
-libslice-objs-y += slice_loader_start.o
 libslice-objs-y += slice.o
 libslice-objs-y += slice_smp.o
 libslice-objs-y += slice_pmp.o
 libslice-objs-y += slice_mgr.o
 libslice-objs-y += slice_state.o
 libslice-objs-y += slice_reset.o
+libslice-objs-y += slice_mem.o
+
+thirdparty/opensbi/$(SBI_BUILD_DIR)/lib/slice/%.o: thirdparty/opensbi/lib/slice/%.c
+	$(CC) $(CFLAGS) $(INCLUDES) $(OPT-y) thirdparty/opensbi/lib/slice/$*.c -c -o $@
 
 LIBS += $(foreach obj,$(libsbi-objs-y),thirdparty/opensbi/$(SBI_BUILD_DIR)/lib/sbi/$(obj))
 LIBS += $(foreach obj,$(libslice-objs-y),thirdparty/opensbi/$(SBI_BUILD_DIR)/lib/slice/$(obj))

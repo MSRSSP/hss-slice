@@ -53,7 +53,11 @@ else
 EXTRA_SRCS-y += \
         $(BOARD_DIR)/uart_helper.c
 endif
+
 BOARD_DIR=boards/$(BOARD)
+
+EXTRA_SRCS-$(CONFIG_SLICE) += $(BOARD_DIR)/slice_attest.c
+EXTRA_SRCS-$(CONFIG_SLICE) += $(BOARD_DIR)/slice_loader_start.c
 
 INCLUDES += \
 	-I$(BOARD_DIR)/mpfs_hal_config/\
