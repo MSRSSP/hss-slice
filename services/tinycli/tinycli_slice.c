@@ -14,6 +14,7 @@
 #include "slice/slice_mgr.h"
 #include "slice/slice_pmp.h"
 #include "tinycli_helper.h"
+#include "slice_attest.h"
 
 struct tinycli_key {
   const int tokenId;
@@ -176,6 +177,7 @@ void tinyCLI_Slice(unsigned narg, const char **argv_tokenArray) {
     SLICE_START,
     SLICE_CREATE,
     SLICE_DELETE,
+    SLICE_ATTEST,
 #ifndef TINY_TCB
     SLICE_DUMP,
     SLICE_HW_RESET,
@@ -191,6 +193,7 @@ void tinyCLI_Slice(unsigned narg, const char **argv_tokenArray) {
       {SLICE_START, "START", "start a slice."},
       {SLICE_CREATE, "CREATE", "create a slice."},
       {SLICE_DELETE, "DELETE", "delete a slice."},
+      {SLICE_ATTEST, "ATTEST", "attest a slice."},
 #ifndef TINY_TCB
       {SLICE_DUMP, "DUMP", "dump slice info."},
       {SLICE_HW_RESET, "RESET",
@@ -211,6 +214,7 @@ void tinyCLI_Slice(unsigned narg, const char **argv_tokenArray) {
     case SLICE_STOP:
     case SLICE_DELETE:
     case SLICE_START:
+    case SLICE_ATTEST:
 #ifndef TINY_TCB
     case SLICE_DUMP:
     case SLICE_HW_RESET:
@@ -220,6 +224,11 @@ void tinyCLI_Slice(unsigned narg, const char **argv_tokenArray) {
 #endif
       if (narg > 1) {
         dom_index = strtoul(argv_tokenArray[base_arg_idx + 1], 0, 10);
+         if (dom_index < 1) {
+          mHSS_FANCY_PRINTF(LOG_NORMAL, "Please arguments dom_index > 0. "
+                                  "Refer to the dom_index from slice dump.\n");
+          return;
+        }
       }
       break;
     default:
@@ -243,6 +252,10 @@ void tinyCLI_Slice(unsigned narg, const char **argv_tokenArray) {
     }
     case SLICE_CREATE: {
       slice_create_cli(narg, (const char **)&argv_tokenArray[base_arg_idx]);
+      break;
+    }
+    case SLICE_ATTEST: {
+      slice_attest(slice_from_index(dom_index), NULL, 0);
       break;
     }
 #ifndef TINY_TCB

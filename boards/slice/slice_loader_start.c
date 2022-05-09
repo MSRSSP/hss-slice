@@ -9,6 +9,7 @@
 #include <slice/slice_fw.h>
 #include <slice/slice_mgr.h>
 #include <slice/slice_pmp.h>
+#include "slice_attest.h"
 
 void __attribute__((noreturn))
 slice_jump_to_fw(unsigned long next_addr, unsigned long arg0,
@@ -62,6 +63,8 @@ slice_loader(struct sbi_domain *dom, unsigned long fw_src,
     }
     unsigned long startTicks = csr_read(CSR_MCYCLE);
     sbi_memcpy((void *)slice_fw_start, (void *)fw_src, fw_size);
+    //slice_measure(dom, slice_fw_start, fw_size);
+    slice_measure(dom, dom->next_boot_src, dom->next_boot_size);
     sbi_printf("copy slice_fw: hart %d: #ticks = %lu\n", current_hartid(),
                csr_read(CSR_MCYCLE) - startTicks);
     slice_status_start(dom);

@@ -1,4 +1,4 @@
-menu "Icicle-Kit Design Configuration Options"
+menu "Slice Configuration Options"
 
 config SOC_FPGA_DESIGN_XML
 	string "Enter path to Libero XML file"
@@ -7,7 +7,21 @@ config SOC_FPGA_DESIGN_XML
 		This option specifies the design XML file to use.
 
 config QEMU
-	bool 
+	bool "QEMU"
 	default y
-endmenu
+	help
+		Whether to run in qemu
 
+config SLICE_ATTESTATION
+	bool "slice attestation"
+	default y
+	help
+		This option specifies slice attestation
+
+config SLICE_ATTESTATION_KEY_PREFIX
+	depends on CRYPTO_LIBECC
+	string "Enter prefix path to private Key"
+	default "bypass-uboot/keys/key"
+	help
+		This option specifies the ECC SECP384R1 private key to use (generated from ec_utils gen_keys SECP384R1 ECDSA "bypass-uboot/keys/key").
+endmenu

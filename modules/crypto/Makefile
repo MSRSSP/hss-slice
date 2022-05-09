@@ -35,13 +35,11 @@ INCLUDES +=\
 ifdef CONFIG_CRYPTO_SIGNING
 x509-ec-sepc384r1-public.h: $(subst $\",,$(CONFIG_CRYPTO_SIGNING_KEY_PUBLIC))
 	tools/secure-boot/der_to_c_header.py $< x509-ec-secp384r1-public.h
-
+endif
 #
 # libecc
 #
-ifdef CONFIG_CRYPTO_LIBECC
 SRCS-$(CONFIG_CRYPTO_LIBECC) += \
-	modules/crypto/hss_crypto_libecc.c \
 	modules/crypto/random.c \
         thirdparty/libecc/src/external_deps/print.c \
         thirdparty/libecc/src/external_deps/time.c \
@@ -113,6 +111,8 @@ SRCS-$(CONFIG_CRYPTO_LIBECC) += \
 	thirdparty/libecc/src/utils/print_nn.c \
 	thirdparty/libecc/src/utils/utils.c \
 
+ifdef CONFIG_CRYPTO_LIBECC
+SRCS-$(CONFIG_CRYPTO_SIGNING) += modules/crypto/hss_crypto_libecc.c
 INCLUDES +=\
 	-I./thirdparty/libecc/src/ \
 
@@ -202,5 +202,4 @@ SRCS-$(CONFIG_CRYPTO_USER_CRYPTO) += \
 
 modules/crypto/hss_crypto_cal.o: x509-ec-sepc384r1-public.h
 modules/crypto/hss_crypto_cal.o: CFLAGS=$(CFLAGS_GCCEXT)
-endif
 endif

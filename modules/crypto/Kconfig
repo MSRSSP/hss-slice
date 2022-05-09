@@ -10,7 +10,7 @@ config CRYPTO_SIGNING
 		If you don't know what to do here, say Y.
 
 menu "Signing Configuration"
-        visible if CRYPTO_SIGNING
+        visible if CRYPTO_SIGNING || SLICE_ATTESTATION
 
 config CRYPTO_SIGNING_KEY_PUBLIC
         depends on CRYPTO_SIGNING
@@ -23,7 +23,7 @@ choice
 
 config CRYPTO_LIBECC
 	bool "libecc (SHA2 and ECDSA P-384)"
-	depends on CRYPTO_SIGNING
+	depends on CRYPTO_SIGNING || SLICE_ATTESTATION
 	help
 		This feature enables support for the libecc library for SHA2 hashing
                 and ECDSA P-384 code signing.
