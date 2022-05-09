@@ -620,10 +620,12 @@ static void boot_download_chunks_onExit(struct StateMachine *const pMyMachine)
 #if IS_ENABLED(CONFIG_SLICE)
     struct HSS_Boot_LocalData *const pInstanceData = pMyMachine->pInstanceData;
     enum HSSHartId const target = pInstanceData->target;
-    slice_register_boot_hart(target,
-                             pInstanceData->bootImage_src,
-                             pInstanceData->bootImage_size,
-                             pInstanceData->ancilliaryData, "");
+    struct slice_options options = {
+        .image_from = pInstanceData->bootImage_src,
+        .image_size = pInstanceData->bootImage_size,
+        .fdt_from = pInstanceData->ancilliaryData,
+    };
+    slice_register_boot_hart(target, &options);
 #endif
 }
 
