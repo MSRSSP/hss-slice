@@ -107,7 +107,6 @@ int slice_key_init(void) {
 
   const ec_str_params *ec_str_p;
   int ret = 0;
-  slice_info("%s\n", __func__);
   if (keypair) {
     goto out;
   }

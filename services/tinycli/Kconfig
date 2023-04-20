@@ -9,6 +9,13 @@ config SERVICE_TINYCLI
 menu "Tiny Command Line Interface" 
 	visible if SERVICE_TINYCLI
 
+config SERVICE_TINY_TCB
+    bool "TinyCLI Small TCB"
+    default true
+    help
+        Should it used as a TCB in deployment or use for debugging/evaluation purposes. Set to true by default.
+        When disabled, the TinyClient will support dump, ipi, cache management features.
+
 config SERVICE_TINYCLI_TIMEOUT
         depends on SERVICE_TINYCLI
 	int "Timeout for entering TinyCLI (in seconds)"

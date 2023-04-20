@@ -137,7 +137,7 @@ static void slice_help(const struct tinycli_key *debugKeys, size_t nKeys) {
   }
 }
 
-#ifndef TINY_TCB
+#ifndef CONFIG_TINY_TCB
 static void slice_ipi_test_cli(int dom_index, size_t narg, const char **argv) {
   bool done = false;
   HSSTicks_t last_sec_time = HSS_GetTime();
@@ -178,7 +178,7 @@ void tinyCLI_Slice(unsigned narg, const char **argv_tokenArray) {
     SLICE_CREATE,
     SLICE_DELETE,
     SLICE_ATTEST,
-#ifndef TINY_TCB
+#ifndef CONFIG_TINY_TCB
     SLICE_DUMP,
     SLICE_HW_RESET,
     SLICE_PMP,
@@ -194,7 +194,7 @@ void tinyCLI_Slice(unsigned narg, const char **argv_tokenArray) {
       {SLICE_CREATE, "CREATE", "create a slice."},
       {SLICE_DELETE, "DELETE", "delete a slice."},
       {SLICE_ATTEST, "ATTEST", "attest a slice."},
-#ifndef TINY_TCB
+#ifndef CONFIG_TINY_TCB
       {SLICE_DUMP, "DUMP", "dump slice info."},
       {SLICE_HW_RESET, "RESET",
        "reset a slice via per-core reset unit (Only work in QEMU)."},
@@ -215,7 +215,7 @@ void tinyCLI_Slice(unsigned narg, const char **argv_tokenArray) {
     case SLICE_DELETE:
     case SLICE_START:
     case SLICE_ATTEST:
-#ifndef TINY_TCB
+#ifndef CONFIG_TINY_TCB
     case SLICE_DUMP:
     case SLICE_HW_RESET:
     case SLICE_PMP:
@@ -258,7 +258,7 @@ void tinyCLI_Slice(unsigned narg, const char **argv_tokenArray) {
       slice_attest(slice_from_index(dom_index), NULL, 0);
       break;
     }
-#ifndef TINY_TCB
+#ifndef CONFIG_TINY_TCB
     case SLICE_HW_RESET: {
       break;
     }
