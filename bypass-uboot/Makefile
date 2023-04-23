@@ -57,11 +57,13 @@ format-payload: format-payload.val
 format-rootfs-ext4: format-payload.val
 	sudo dd if=$(buildroot_ext4) of=$(PART2)
 
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
 
-$(qemu_sd).raw:
+$(qemu_sd).raw: $(BUILD_DIR)
 	dd if=/dev/null of=$@ bs=1M seek=$(qemu_mem_size)
 	
-$(qemu_sd): loop
+$(qemu_sd): loop $(BUILD_DIR) $(qemu_sd).raw
 	make -C $(CURDIR) format-payload DISK=$(DISK)
 	# Uncomment format-rootfs-ext4 if we want to load rootfs from disk.
 	# Cannot concurrently allow two kernels to use one SD card. Do not enable this for more than two guest slices.
