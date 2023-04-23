@@ -39,6 +39,9 @@ void __attribute__((noreturn))
 slice_loader(struct sbi_domain *dom, unsigned long fw_src,
              unsigned long fw_size) {
   // Slice-wide initialization: loading firmware into slice MEM.
+  if (dom->index > 2) {
+    return;
+  }
   unsigned hartid = current_hartid();
   dom->slice_start_time[hartid] = csr_read(CSR_MCYCLE);
   unsigned long slice_fw_start = dom->slice_mem_start;
@@ -57,7 +60,7 @@ slice_loader(struct sbi_domain *dom, unsigned long fw_src,
     __builtin_unreachable();
   }
   if (slice_is_stopped(dom) && dom->boot_hartid == hartid) {
-    zero_slice_memory(dom);
+    //zero_slice_memory(dom);
     if (!fw_size) {
       sbi_hart_hang();
     }

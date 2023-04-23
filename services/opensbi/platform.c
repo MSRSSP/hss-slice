@@ -365,6 +365,7 @@ static int mpfs_domains_init(void)
 {
     // register all AMP domains
     int result = SBI_EINVAL;
+    u32 dom_id = 0;
     for (int hartid = 1; hartid < ARRAY_SIZE(hart_table); hartid++) {
         const int boot_hartid = hart_table[hartid].owner_hartid;
 
@@ -389,8 +390,8 @@ static int mpfs_domains_init(void)
                 pDom->next_mode = hart_table[boot_hartid].next_mode;
                 pDom->system_reset_allowed = TRUE;
                 pDom->possible_harts = pMask;
-
-                result = sbi_domain_register(pDom, pMask);
+                sbi_printf("%s:%d\n", __func__, __LINE__);
+                result = sbi_domain_register(pDom, pMask, dom_id++);
                 if (result) {
                     sbi_printf("%s(): sbi_domain_register() failed for %s\n", __func__, pDom->name);
                     break;
