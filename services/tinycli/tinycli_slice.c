@@ -260,6 +260,7 @@ void tinyCLI_Slice(unsigned narg, const char **argv_tokenArray) {
     }
 #ifndef CONFIG_TINY_TCB
     case SLICE_HW_RESET: {
+      slice_hw_reset(dom_index);
       break;
     }
     case SLICE_DUMP: {
