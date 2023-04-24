@@ -6,7 +6,7 @@
 #include <slice/slice.h>
 #include "slice_attest.h"
 
-#define REPORT_DATA_SIZE 512
+#define REPORT_DATA_SIZE 64
 #define SHA_ALG_TYPE SHA384
 #define SIG_ALG_TYPE ECDSA
 
@@ -15,11 +15,11 @@ typedef struct _slice_digest {
 } slice_digest;
 
 typedef struct _slice_signature {
-  uint8_t buf[48];
+  uint8_t buf[128];
 } slice_signature;
 
 typedef struct {
-  u8 buf[REPORT_DATA_SIZE / 8];
+  u8 buf[REPORT_DATA_SIZE];
   u64 mem_size;
   u32 hart_counts;
   slice_digest digest; // SHA384
@@ -94,11 +94,19 @@ err:
   return -1;
 }
 
-void slice_report_dump(const slice_report *report) {
-  slice_info("hart_count = %d\n", report->hart_counts);
-  slice_info("mem_size = %lx\n", report->mem_size);
-  slice_info("digest:\n");
+void slice_report_dump(const slice_attestation *attest) {
+  slice_report* report = &attest->report;
+  slice_info("signature:\n");
+  slice_print_bytes(&attest->signature, u8siglen);
+  slice_info("report dump\n");
+  slice_print_bytes(&report->buf[9], sizeof(slice_report));
+  slice_info("\thart_count = %d\n", report->hart_counts);
+  slice_info("\tmem_size = %lx\n", report->mem_size);
+  slice_info("\tdigest:\n\t");
   slice_print_bytes(&report->digest, sizeof(report->digest));
+  slice_info("\tdata:\n\t");
+  slice_print_bytes(report->buf, REPORT_DATA_SIZE);
+
 }
 
 int slice_key_init(void) {
@@ -153,8 +161,13 @@ int slice_attest(struct sbi_domain *slice_dom, const unsigned char *data,
   if(data)
     sbi_memcpy(&report->buf[0], data, size);
   slice_key_init();
-  ret = ec_sign(&attestation.signature, u8siglen, keypair, (u8 *)report,
-                sizeof(*report), sig_type, hash_type, NULL, 0);
+  ret = ec_sign(&attestation.signature.buf[0], u8siglen, keypair, (u8 *)&report->buf[0],
+                sizeof(slice_report), sig_type, hash_type, NULL, 0);
+  if(ret!=0) {
+    slice_info("failed EC sign %d.\n", ret);
+  } else {
+    slice_info("EC sign Ok! report size: %d, signature size: %d\n",sizeof(slice_report), u8siglen);
+  }
   slice_verify(&attestation);
   return 0;
 }
@@ -167,11 +180,11 @@ bool slice_verify(const unsigned char *raw_attestation) {
   int ret = ec_structured_pub_key_import_from_buf(
       &pub_key, &params, SECP384R1_ECDSA_public_key,
       sizeof(SECP384R1_ECDSA_public_key), sig_type);
-  ret = ec_verify(&attestation->signature, u8siglen, &pub_key,
-                  (u8 *)&attestation->report, sizeof(attestation->report),
+  ret = ec_verify(&attestation->signature.buf[0], u8siglen, &pub_key,
+                  (u8 *)&attestation->report.buf[0], sizeof(slice_report),
                   sig_type, hash_type, NULL, 0);
   slice_info("verification %s.\n", (ret == 0) ? "success" : "failed");
-  slice_report_dump(&attestation->report);
+  slice_report_dump(attestation);
   return ret;
 }
 

@@ -255,7 +255,7 @@ void tinyCLI_Slice(unsigned narg, const char **argv_tokenArray) {
       break;
     }
     case SLICE_ATTEST: {
-      slice_attest(slice_from_index(dom_index), NULL, 0);
+      slice_attest(slice_from_index(dom_index), argv_tokenArray[base_arg_idx], 64);
       break;
     }
 #ifndef CONFIG_TINY_TCB
