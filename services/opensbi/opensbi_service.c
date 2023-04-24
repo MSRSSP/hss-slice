@@ -201,6 +201,7 @@ void sbi_exit(struct sbi_scratch *scratch){
 
 static atomic_t host_init_domain = ATOMIC_INITIALIZER(0);
 static atomic_t host_init_complete = ATOMIC_INITIALIZER(0);
+
 void __noreturn HSS_OpenSBI_DoBoot(enum HSSHartId hartid, int sbi_is_shared)
 {
     static unsigned long fsbl_addr = (unsigned long)&_slice_fw_start;
@@ -214,10 +215,10 @@ void __noreturn HSS_OpenSBI_DoBoot(enum HSSHartId hartid, int sbi_is_shared)
     mstatus_val = EXTRACT_FIELD(mstatus_val, MSTATUS_MPIE);
     mHSS_CSR_WRITE(CSR_MSTATUS, mstatus_val);
     mHSS_CSR_WRITE(CSR_MIE, 0u);
+    
     opensbi_scratch_setup(sbi_is_shared, hartid);
-    int rc = sbi_console_init(&(pScratches[hartid].scratch));
-    if (rc){
-        sbi_hart_hang();
+    if (!sbi_is_shared) {
+        slice_uart_init(hartid);
     }
     unsigned long slice_fw_start = slice_mem_start_this_hart();
     enum HSSHartId primary_hartid = slice_owner_hart(hartid);
@@ -247,7 +248,6 @@ void __noreturn HSS_OpenSBI_DoBoot(enum HSSHartId hartid, int sbi_is_shared)
 			}
             while(atomic_read(&host_init_complete)==0){
             }
-            sbi_printf("before slice_loader\n");
             mpfs_mark_hart_as_booted(hartid);
             slice_loader(sbi_domain_thishart_ptr(), fsbl_store_addr, fsbl_size);
         }else{

@@ -35,13 +35,11 @@ static void zero_slice_memory(void *dom_ptr) {
 
 struct slice_fw_info fw_info[MAX_HART_NUM];
 extern unsigned long hss_start_time[5];
+
 void __attribute__((noreturn))
 slice_loader(struct sbi_domain *dom, unsigned long fw_src,
              unsigned long fw_size) {
   // Slice-wide initialization: loading firmware into slice MEM.
-  if (dom->index > 2) {
-    return;
-  }
   unsigned hartid = current_hartid();
   dom->slice_start_time[hartid] = csr_read(CSR_MCYCLE);
   unsigned long slice_fw_start = dom->slice_mem_start;
@@ -80,5 +78,8 @@ slice_loader(struct sbi_domain *dom, unsigned long fw_src,
              (unsigned long)&fw_info[hartid]);
   slice_jump_to_fw(slice_fw_start, hartid, (unsigned long)slice_fdt(dom),
                    (unsigned long)&fw_info[hartid]);
+   sbi_printf("2: %s: next_addr=%#lx: arg: %d %lx %lx\n", __func__, slice_fw_start,
+             hartid, (unsigned long)slice_fdt(dom),
+             (unsigned long)&fw_info[hartid]);
   __builtin_unreachable();
 }
